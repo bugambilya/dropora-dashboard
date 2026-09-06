@@ -1,4 +1,5 @@
 
+
 * {
   box-sizing: border-box;
 }
@@ -26,13 +27,14 @@ button {
 }
 
 
-/* ================================
+/* =========================================================
    APP
-================================ */
+========================================================= */
 
 .app {
   min-height: 100vh;
   overflow-x: hidden;
+
   padding: 32px 20px;
 
   transition:
@@ -41,55 +43,101 @@ button {
 }
 
 
+/* =========================================================
+   LIGHT MODE
+   Soft gray / pink / lavender
+========================================================= */
 
 .app.light {
-  background: #e4eee8;
-  color: #294235;
+  background: #eee9ee;
+  color: #302b35;
 
-  --bg: #e4eee8;
+  --bg: #eee9ee;
+  --surface: #e8e2e8;
+  --surface-light: #f8f5f8;
+
   --light-shadow: #ffffff;
-  --dark-shadow: #bdc9c1;
+  --dark-shadow: #c8c0c8;
 
-  --text: #294235;
-  --muted: #71847a;
+  --text: #302b35;
+  --muted: #817782;
 
-  --blue: #3fbd78;
-  --green: #35c979;
+  --primary: #cf4197;
+  --secondary: #fd598e;
+  --purple: #95369c;
+  --pink: #fd598e;
+  --coral: #fd8d71;
+
+  --gradient:
+    linear-gradient(
+      135deg,
+      #95369c 0%,
+      #cf4197 35%,
+      #fd598e 65%,
+      #fd8d71 100%
+    );
 }
 
+
+/* =========================================================
+   DARK MODE
+   Main reference-image style
+========================================================= */
 
 .app.dark {
-  background: #14221c;
-  color: #e2f5ea;
+  background: #292929;
+  color: #ffffff;
 
-  --bg: #14221c;
-  --light-shadow: #20352b;
-  --dark-shadow: #0b1511;
+  --bg: #292929;
+  --surface: #212122;
+  --surface-light: #343436;
 
-  --text: #e2f5ea;
-  --muted: #8ca99a;
+  --light-shadow: #3a3a3c;
+  --dark-shadow: #171717;
 
-  --blue: #4fd18b;
-  --green: #4fe08f;
+  --text: #ffffff;
+  --muted: #99999c;
+
+  --primary: #fd598e;
+  --secondary: #cf4197;
+  --purple: #95369c;
+  --pink: #fd598e;
+  --coral: #fd8d71;
+
+  --gradient:
+    linear-gradient(
+      135deg,
+      #95369c 0%,
+      #cf4197 35%,
+      #fd598e 65%,
+      #fd8d71 100%
+    );
 }
 
 
-/* ================================
+/* =========================================================
    HEADER
-================================ */
+========================================================= */
 
 .header {
   display: flex;
   flex-direction: column;
+
   gap: 24px;
+
   justify-content: space-between;
 }
 
 .logo {
   font-size: 50px;
+
   line-height: 1;
+
   font-weight: 500;
+
   letter-spacing: -2px;
+
+  color: var(--text);
 
   text-shadow:
     2px 2px 4px var(--dark-shadow),
@@ -99,25 +147,30 @@ button {
 .header-controls {
   display: flex;
   align-items: center;
+
   gap: 14px;
 }
 
 
-/* ================================
+/* =========================================================
    ONLINE STATUS
-================================ */
+========================================================= */
 
 .online-status {
   display: flex;
   align-items: center;
+
   gap: 8px;
 
   padding: 10px 20px;
+
   border-radius: 999px;
 
   font-size: 14px;
 
   background: var(--bg);
+
+  color: var(--primary);
 
   box-shadow:
     6px 6px 12px var(--dark-shadow),
@@ -125,17 +178,36 @@ button {
 }
 
 .light .online-status {
-  color: #22a968;
+  color: #cf4197;
 }
 
 .dark .online-status {
-  color: #4fe08f;
+  color: #fd598e;
 }
 
 
-/* ================================
+/* =========================================================
+   ONLINE DOT
+========================================================= */
+
+.online-status::before {
+  content: "";
+
+  width: 9px;
+  height: 9px;
+
+  border-radius: 50%;
+
+  background: #fd598e;
+
+  box-shadow:
+    0 0 10px rgba(253, 89, 142, 0.8);
+}
+
+
+/* =========================================================
    ICON BUTTONS
-================================ */
+========================================================= */
 
 .icon-button {
   width: 48px;
@@ -148,6 +220,7 @@ button {
   border-radius: 50%;
 
   background: var(--bg);
+
   color: var(--muted);
 
   box-shadow:
@@ -162,6 +235,8 @@ button {
 
 .icon-button:hover {
   transform: translateY(-2px);
+
+  color: var(--primary);
 }
 
 .icon-button:active {
@@ -173,26 +248,26 @@ button {
 }
 
 
-/* ================================
+/* =========================================================
    THEME BUTTON
-================================ */
+========================================================= */
 
 .theme-button {
-  color: #f7c75d;
+  color: #fd8d71;
 }
 
 .light .theme-button {
-  color: #52627f;
+  color: #95369c;
 }
 
 .dark .theme-button {
-  color: #4fe08f;
+  color: #fd8d71;
 }
 
 
-/* ================================
-   NOTIFICATION
-================================ */
+/* =========================================================
+   NOTIFICATION BUTTON
+========================================================= */
 
 .notification-button {
   position: relative;
@@ -209,10 +284,10 @@ button {
 
   border-radius: 50%;
 
-  background: #f18b35;
+  background: #fd8d71;
 
   box-shadow:
-    0 0 8px rgba(241, 139, 53, 0.7);
+    0 0 8px rgba(253, 141, 113, 0.8);
 }
 
 
@@ -222,6 +297,7 @@ button {
 
 .action-cards {
   display: grid;
+
   grid-template-columns: 1fr;
 
   gap: 20px;
@@ -230,9 +306,9 @@ button {
 }
 
 
-/* ================================
-   RECEIVE CARD
-================================ */
+/* =========================================================
+   RECEIVE PACKAGE CARD
+========================================================= */
 
 .receive-card {
   min-height: 110px;
@@ -246,12 +322,19 @@ button {
 
   text-align: left;
 
-  color: white;
+  color: #ffffff;
 
-  background: #4fca86;
+  background:
+    linear-gradient(
+      135deg,
+      #95369c 0%,
+      #cf4197 35%,
+      #fd598e 65%,
+      #fd8d71 100%
+    );
 
   box-shadow:
-    10px 10px 20px #b7c2bb,
+    10px 10px 20px #c4bcc4,
     -10px -10px 20px #ffffff;
 
   transition:
@@ -264,28 +347,28 @@ button {
 }
 
 .receive-card:active {
+  transform: translateY(0);
+
   box-shadow:
     inset 5px 5px 10px rgba(0, 0, 0, 0.18),
     inset -5px -5px 10px rgba(255, 255, 255, 0.15);
 }
 
 
-/* ================================
+/* =========================================================
    DARK RECEIVE CARD
-================================ */
+========================================================= */
 
 .dark .receive-card {
-  background: #26734d;
-
   box-shadow:
-    10px 10px 20px #0b1511,
-    -10px -10px 20px #20352b;
+    10px 10px 20px #171717,
+    -10px -10px 20px #3a3a3c;
 }
 
 
-/* ================================
+/* =========================================================
    ACTION ICON
-================================ */
+========================================================= */
 
 .action-icon {
   width: 59px;
@@ -312,6 +395,7 @@ button {
   margin: 0;
 
   font-size: 19px;
+
   font-weight: 500;
 }
 
@@ -322,7 +406,7 @@ button {
 }
 
 .receive-card .action-description {
-  color: #e0f7e9;
+  color: #ffe5ed;
 }
 
 
@@ -332,6 +416,7 @@ button {
 
 .dashboard {
   display: grid;
+
   grid-template-columns: 1fr;
 
   gap: 28px;
@@ -360,6 +445,7 @@ button {
 
 .locker-header {
   display: flex;
+
   align-items: center;
   justify-content: space-between;
 
@@ -370,6 +456,7 @@ button {
   margin: 0;
 
   font-size: 15px;
+
   font-weight: 500;
 
   letter-spacing: 0.04em;
@@ -379,11 +466,12 @@ button {
 
 .connected {
   display: flex;
+
   align-items: center;
 
   gap: 8px;
 
-  color: var(--green);
+  color: var(--primary);
 
   font-size: 14px;
 }
@@ -395,10 +483,10 @@ button {
 
   border-radius: 50%;
 
-  background: var(--green);
+  background: #fd598e;
 
   box-shadow:
-    0 0 12px rgba(59, 217, 133, 0.7);
+    0 0 12px rgba(253, 89, 142, 0.75);
 }
 
 
@@ -429,6 +517,7 @@ button {
   height: 39px;
 
   display: flex;
+
   align-items: center;
   justify-content: space-between;
 
@@ -453,6 +542,10 @@ button {
   color: var(--muted);
 }
 
+.device-name span:last-child {
+  color: var(--primary);
+}
+
 
 /* =========================================================
    COMPARTMENT
@@ -464,7 +557,9 @@ button {
   height: 180px;
 
   display: flex;
+
   flex-direction: column;
+
   justify-content: space-between;
 
   overflow: hidden;
@@ -484,19 +579,19 @@ button {
 ========================================================= */
 
 .compartment-locked {
-  background: #d9f0e3;
+  background: #f3dce7;
 
   box-shadow:
-    inset 6px 6px 12px #b9d2c4,
+    inset 6px 6px 12px #d0b9c4,
     inset -6px -6px 12px #ffffff;
 }
 
 .dark .compartment-locked {
-  background: #193b2b;
+  background: #38262f;
 
   box-shadow:
-    inset 6px 6px 12px #0d2118,
-    inset -6px -6px 12px #28543d;
+    inset 6px 6px 12px #21171c,
+    inset -6px -6px 12px #4b343f;
 }
 
 
@@ -505,19 +600,19 @@ button {
 ========================================================= */
 
 .compartment-unlocked {
-  background: #d8f0e2;
+  background: #f0dce9;
 
   box-shadow:
-    inset 6px 6px 12px #b9d3c4,
+    inset 6px 6px 12px #cfb9c9,
     inset -6px -6px 12px #ffffff;
 }
 
 .dark .compartment-unlocked {
-  background: #1b3d2d;
+  background: #392630;
 
   box-shadow:
-    inset 6px 6px 12px #0d2118,
-    inset -6px -6px 12px #2a5740;
+    inset 6px 6px 12px #21171b,
+    inset -6px -6px 12px #4d343f;
 }
 
 
@@ -539,19 +634,21 @@ button {
       55deg,
       transparent,
       transparent 13px,
-      #6f927e 14px,
-      #6f927e 15px
+      #95369c 14px,
+      #95369c 15px
     );
 }
 
 .dark .compartment-pattern {
+  opacity: 0.1;
+
   background:
     repeating-linear-gradient(
       55deg,
       transparent,
       transparent 13px,
-      #77c99b 14px,
-      #77c99b 15px
+      #fd598e 14px,
+      #fd598e 15px
     );
 }
 
@@ -563,7 +660,6 @@ button {
 .compartment-top,
 .compartment-bottom {
   position: relative;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -573,12 +669,12 @@ button {
 .compartment-bottom span {
   font-size: 13px;
 
-  color: #71847a;
+  color: #817782;
 }
 
 .dark .compartment-top span,
 .dark .compartment-bottom span {
-  color: #8ca99a;
+  color: #aaa0a5;
 }
 
 .compartment-top span {
@@ -591,24 +687,29 @@ button {
 ========================================================= */
 
 .lock-green {
-  color: #35c979;
+  color: #cf4197;
 
   filter:
-    drop-shadow(0 0 5px rgba(53, 201, 121, 0.4));
+    drop-shadow(
+      0 0 5px rgba(207, 65, 151, 0.45)
+    );
 }
 
 .lock-blue {
-  color: #3fbd78;
+  color: #fd598e;
 
   filter:
-    drop-shadow(0 0 5px rgba(63, 189, 120, 0.4));
+    drop-shadow(
+      0 0 5px rgba(253, 89, 142, 0.45)
+    );
+}
+
+.dark .lock-green {
+  color: #fd598e;
 }
 
 .dark .lock-blue {
-  color: #4fd18b;
-
-  filter:
-    drop-shadow(0 0 5px rgba(79, 209, 139, 0.5));
+  color: #fd8d71;
 }
 
 
@@ -620,6 +721,7 @@ button {
   position: relative;
 
   display: flex;
+
   flex-direction: column;
 
   align-items: center;
@@ -631,6 +733,7 @@ button {
   height: 54px;
 
   display: flex;
+
   align-items: center;
   justify-content: center;
 
@@ -644,37 +747,37 @@ button {
 }
 
 
-/* ================================
-   GREEN LOCK CIRCLE
-================================ */
+/* =========================================================
+   LOCKED CIRCLE
+========================================================= */
 
 .lock-circle-green {
-  background: #d5efdf;
+  background: #f0d6e2;
 
-  color: #35c979;
+  color: #cf4197;
 }
 
 .dark .lock-circle-green {
-  background: #214b36;
+  background: #472a39;
 
-  color: #4fe08f;
+  color: #fd598e;
 }
 
 
-/* ================================
-   UNLOCKED LOCK CIRCLE
-================================ */
+/* =========================================================
+   UNLOCKED CIRCLE
+========================================================= */
 
 .lock-circle-blue {
-  background: #d8f0e2;
+  background: #f4dce8;
 
-  color: #3fbd78;
+  color: #fd598e;
 }
 
 .dark .lock-circle-blue {
-  background: #214b36;
+  background: #482a39;
 
-  color: #4fd18b;
+  color: #fd8d71;
 }
 
 
@@ -695,42 +798,42 @@ button {
 }
 
 
-/* ================================
+/* =========================================================
    LOCKED STATUS
-================================ */
+========================================================= */
 
 .status-locked {
-  background: #d5efdf;
+  background: #f0d6e2;
 
-  color: #28b96d;
+  color: #c23f8d;
 }
 
 .dark .status-locked {
-  background: #214b36;
+  background: #472a39;
 
-  color: #4fe08f;
-}
-
-
-/* ================================
-   UNLOCKED STATUS
-================================ */
-
-.status-unlocked {
-  background: #d8f0e2;
-
-  color: #3ba96d;
-}
-
-.dark .status-unlocked {
-  background: #214b36;
-
-  color: #4fd18b;
+  color: #fd598e;
 }
 
 
 /* =========================================================
-   COMPARTMENT STATUS DOT
+   UNLOCKED STATUS
+========================================================= */
+
+.status-unlocked {
+  background: #f4dce8;
+
+  color: #df5c91;
+}
+
+.dark .status-unlocked {
+  background: #482a39;
+
+  color: #fd8d71;
+}
+
+
+/* =========================================================
+   STATUS DOTS
 ========================================================= */
 
 .compartment-status-dot {
@@ -740,35 +843,18 @@ button {
   border-radius: 50%;
 }
 
-
-/* ================================
-   GREEN STATUS DOT
-================================ */
-
 .status-dot-green {
-  background: #42dd85;
+  background: #fd598e;
 
   box-shadow:
-    0 0 14px rgba(66, 221, 133, 0.7);
+    0 0 14px rgba(253, 89, 142, 0.75);
 }
-
-
-/* ================================
-   SECOND STATUS DOT
-================================ */
 
 .status-dot-blue {
-  background: #45c982;
+  background: #fd8d71;
 
   box-shadow:
-    0 0 14px rgba(69, 201, 130, 0.6);
-}
-
-.dark .status-dot-blue {
-  background: #4fd18b;
-
-  box-shadow:
-    0 0 14px rgba(79, 209, 139, 0.6);
+    0 0 14px rgba(253, 141, 113, 0.65);
 }
 
 
@@ -781,6 +867,7 @@ button {
   height: 48px;
 
   display: flex;
+
   align-items: center;
   justify-content: center;
 
@@ -796,7 +883,8 @@ button {
 
   transition:
     box-shadow 0.2s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    color 0.2s ease;
 }
 
 .locker-button:hover {
@@ -817,15 +905,19 @@ button {
 ========================================================= */
 
 .unlock-button {
-  color: #3fbd78;
+  color: #cf4197;
 
   box-shadow:
     6px 6px 12px var(--dark-shadow),
     -6px -6px 12px var(--light-shadow);
 }
 
+.unlock-button:hover {
+  color: #fd598e;
+}
+
 .dark .unlock-button {
-  color: #4fd18b;
+  color: #fd598e;
 }
 
 
@@ -834,15 +926,19 @@ button {
 ========================================================= */
 
 .lock-button {
-  color: #35c979;
+  color: #fd598e;
 
   box-shadow:
     6px 6px 12px var(--dark-shadow),
     -6px -6px 12px var(--light-shadow);
 }
 
+.lock-button:hover {
+  color: #fd8d71;
+}
+
 .dark .lock-button {
-  color: #4fe08f;
+  color: #fd8d71;
 }
 
 
@@ -897,17 +993,21 @@ button {
 }
 
 .tab:hover {
-  color: var(--blue);
+  color: var(--primary);
 }
 
 .active-tab {
   background: var(--bg);
 
-  color: var(--blue);
+  color: var(--primary);
 
   box-shadow:
     4px 4px 8px var(--dark-shadow),
     -4px -4px 8px var(--light-shadow);
+}
+
+.dark .active-tab {
+  color: #fd598e;
 }
 
 
@@ -928,7 +1028,13 @@ button {
 
   border-radius: 50%;
 
-  background: #f28b36;
+  background:
+    linear-gradient(
+      135deg,
+      #cf4197,
+      #fd598e,
+      #fd8d71
+    );
 
   color: white;
 
@@ -957,6 +1063,7 @@ button {
   height: 105px;
 
   display: flex;
+
   flex-direction: column;
 
   align-items: center;
@@ -971,12 +1078,21 @@ button {
   box-shadow:
     7px 7px 14px var(--dark-shadow),
     -7px -7px 14px var(--light-shadow);
+
+  transition:
+    transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
 }
 
 .stat-value {
   font-size: 25px;
 
   font-weight: 400;
+
+  color: var(--text);
 }
 
 .stat-label {
@@ -993,19 +1109,19 @@ button {
 ========================================================= */
 
 .blue-text {
-  color: #3fbd78;
+  color: #cf4197;
 }
 
 .green-text {
-  color: #35c979;
+  color: #fd598e;
 }
 
 .dark .blue-text {
-  color: #4fd18b;
+  color: #fd598e;
 }
 
 .dark .green-text {
-  color: #4fe08f;
+  color: #fd8d71;
 }
 
 
@@ -1056,6 +1172,8 @@ button {
   gap: 8px;
 
   font-size: 14px;
+
+  color: var(--primary);
 }
 
 
@@ -1112,6 +1230,7 @@ button {
   min-height: 350px;
 
   display: flex;
+
   flex-direction: column;
 
   align-items: center;
@@ -1137,14 +1256,16 @@ button {
 .empty-icon {
   margin-bottom: 16px;
 
-  color: #3fbd78;
+  color: #cf4197;
 
   filter:
-    drop-shadow(2px 2px 4px var(--dark-shadow));
+    drop-shadow(
+      2px 2px 4px var(--dark-shadow)
+    );
 }
 
 .dark .empty-icon {
-  color: #4fd18b;
+  color: #fd598e;
 }
 
 .empty-state h2 {
@@ -1179,7 +1300,7 @@ button {
 }
 
 .compartment-summary strong {
-  color: var(--green);
+  color: var(--primary);
 
   font-weight: 600;
 }
@@ -1220,6 +1341,13 @@ button {
   box-shadow:
     inset 4px 4px 8px var(--dark-shadow),
     inset -4px -4px 8px var(--light-shadow);
+
+  transition:
+    transform 0.2s ease;
+}
+
+.package-mini-row:hover {
+  transform: translateX(2px);
 }
 
 .package-mini-id {
@@ -1289,6 +1417,13 @@ button {
   box-shadow:
     10px 10px 20px var(--dark-shadow),
     -10px -10px 20px var(--light-shadow);
+
+  transition:
+    transform 0.2s ease;
+}
+
+.package-card:hover {
+  transform: translateY(-2px);
 }
 
 .package-card-collected {
@@ -1300,15 +1435,98 @@ button {
 }
 
 .package-status-tag.waiting {
-  color: var(--green);
+  color: #fd598e;
 }
 
 .package-status-tag.collected {
   color: var(--muted);
 }
 
-.dark .package-status-tag.waiting {
-  color: #4fe08f;
+
+/* =========================================================
+   GRADIENT UTILITY
+========================================================= */
+
+.gradient-text {
+  background:
+    linear-gradient(
+      135deg,
+      #95369c,
+      #cf4197,
+      #fd598e,
+      #fd8d71
+    );
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+}
+
+
+/* =========================================================
+   GRADIENT BORDER EFFECT
+========================================================= */
+
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  padding: 1px;
+
+  border-radius: inherit;
+
+  background:
+    linear-gradient(
+      135deg,
+      #95369c,
+      #cf4197,
+      #fd598e,
+      #fd8d71
+    );
+
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+
+  -webkit-mask-composite: xor;
+
+  mask-composite: exclude;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   GLOW EFFECTS
+========================================================= */
+
+.pink-glow {
+  filter:
+    drop-shadow(
+      0 0 8px rgba(253, 89, 142, 0.55)
+    );
+}
+
+.coral-glow {
+  filter:
+    drop-shadow(
+      0 0 8px rgba(253, 141, 113, 0.55)
+    );
+}
+
+.purple-glow {
+  filter:
+    drop-shadow(
+      0 0 8px rgba(149, 54, 156, 0.55)
+    );
 }
 
 
