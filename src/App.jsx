@@ -167,19 +167,6 @@ function App() {
 
           <div className="locker-device">
 
-            {/* Device Name */}
-
-            <div className="device-name">
-
-              <span>
-                DROPORA LOCKER
-              </span>
-
-              <span className="device-dot" />
-
-            </div>
-
-
             {/* Single Compartment */}
 
             <div
@@ -202,20 +189,6 @@ function App() {
                 <span>
                   DROPORA
                 </span>
-
-                {isLocked ? (
-                  <Lock
-                    size={25}
-                    className="lock-green"
-                    strokeWidth={1.6}
-                  />
-                ) : (
-                  <Unlock
-                    size={25}
-                    className="lock-blue"
-                    strokeWidth={1.6}
-                  />
-                )}
 
               </div>
 

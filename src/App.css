@@ -1,5 +1,3 @@
-
-
 * {
   box-sizing: border-box;
 }
@@ -34,19 +32,13 @@ button {
 .app {
   min-height: 100vh;
   overflow-x: hidden;
-
   padding: 32px 20px;
-
   transition:
     background 0.3s ease,
     color 0.3s ease;
 }
 
 
-/* =========================================================
-   LIGHT MODE
-   Soft gray / pink / lavender
-========================================================= */
 
 .app.light {
   background: #eee9ee;
@@ -79,10 +71,7 @@ button {
 }
 
 
-/* =========================================================
-   DARK MODE
-   Main reference-image style
-========================================================= */
+
 
 .app.dark {
   background: #292929;
@@ -122,23 +111,16 @@ button {
 .header {
   display: flex;
   flex-direction: column;
-
   gap: 24px;
-
   justify-content: space-between;
 }
 
 .logo {
   font-size: 50px;
-
   line-height: 1;
-
   font-weight: 500;
-
   letter-spacing: -2px;
-
   color: var(--text);
-
   text-shadow:
     2px 2px 4px var(--dark-shadow),
     -2px -2px 4px var(--light-shadow);
@@ -147,7 +129,6 @@ button {
 .header-controls {
   display: flex;
   align-items: center;
-
   gap: 14px;
 }
 
@@ -159,30 +140,23 @@ button {
 .online-status {
   display: flex;
   align-items: center;
-
   gap: 8px;
-
   padding: 10px 20px;
-
   border-radius: 999px;
-
   font-size: 14px;
-
   background: var(--bg);
-
   color: var(--primary);
-
   box-shadow:
     6px 6px 12px var(--dark-shadow),
     -6px -6px 12px var(--light-shadow);
 }
 
 .light .online-status {
-  color: #cf4197;
+  color: #1b8014;
 }
 
 .dark .online-status {
-  color: #fd598e;
+  color: #64fd59;
 }
 
 
@@ -192,16 +166,12 @@ button {
 
 .online-status::before {
   content: "";
-
   width: 9px;
   height: 9px;
-
   border-radius: 50%;
-
-  background: #fd598e;
-
+  background: #35e328;
   box-shadow:
-    0 0 10px rgba(253, 89, 142, 0.8);
+    0 0 10px rgba(89, 253, 133, 0.8);
 }
 
 
@@ -212,21 +182,15 @@ button {
 .icon-button {
   width: 48px;
   height: 48px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   border-radius: 50%;
-
   background: var(--bg);
-
   color: var(--muted);
-
   box-shadow:
     6px 6px 12px var(--dark-shadow),
     -6px -6px 12px var(--light-shadow);
-
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -235,13 +199,11 @@ button {
 
 .icon-button:hover {
   transform: translateY(-2px);
-
   color: var(--primary);
 }
 
 .icon-button:active {
   transform: translateY(0);
-
   box-shadow:
     inset 4px 4px 8px var(--dark-shadow),
     inset -4px -4px 8px var(--light-shadow);
@@ -257,11 +219,11 @@ button {
 }
 
 .light .theme-button {
-  color: #95369c;
+  color: #c3cb34;
 }
 
 .dark .theme-button {
-  color: #fd8d71;
+  color: #7f71fd;
 }
 
 
@@ -275,17 +237,12 @@ button {
 
 .notification-dot {
   position: absolute;
-
   right: 7px;
   top: 7px;
-
   width: 9px;
   height: 9px;
-
   border-radius: 50%;
-
   background: #fd8d71;
-
   box-shadow:
     0 0 8px rgba(253, 141, 113, 0.8);
 }
@@ -297,11 +254,8 @@ button {
 
 .action-cards {
   display: grid;
-
   grid-template-columns: 1fr;
-
   gap: 20px;
-
   margin-top: 32px;
 }
 
@@ -312,18 +266,12 @@ button {
 
 .receive-card {
   min-height: 110px;
-
   display: flex;
   align-items: center;
-
   padding: 28px;
-
   border-radius: 28px;
-
   text-align: left;
-
   color: #ffffff;
-
   background:
     linear-gradient(
       135deg,
@@ -336,7 +284,6 @@ button {
   box-shadow:
     10px 10px 20px #c4bcc4,
     -10px -10px 20px #ffffff;
-
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
@@ -348,7 +295,6 @@ button {
 
 .receive-card:active {
   transform: translateY(0);
-
   box-shadow:
     inset 5px 5px 10px rgba(0, 0, 0, 0.18),
     inset -5px -5px 10px rgba(255, 255, 255, 0.15);
@@ -373,19 +319,13 @@ button {
 .action-icon {
   width: 59px;
   height: 59px;
-
   flex-shrink: 0;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   margin-right: 20px;
-
   border-radius: 19px;
-
   background: rgba(255, 255, 255, 0.15);
-
   box-shadow:
     inset 3px 3px 6px rgba(0, 0, 0, 0.08),
     inset -3px -3px 6px rgba(255, 255, 255, 0.08);
@@ -393,15 +333,12 @@ button {
 
 .action-title {
   margin: 0;
-
   font-size: 19px;
-
   font-weight: 500;
 }
 
 .action-description {
   margin: 4px 0 0;
-
   font-size: 14px;
 }
 
@@ -416,11 +353,8 @@ button {
 
 .dashboard {
   display: grid;
-
   grid-template-columns: 1fr;
-
   gap: 28px;
-
   margin-top: 28px;
 }
 
@@ -431,13 +365,9 @@ button {
 
 .locker-section {
   padding: 28px;
-
   border-radius: 27px;
-
   background: var(--bg);
-
   border: none;
-
   box-shadow:
     12px 12px 25px var(--dark-shadow),
     -12px -12px 25px var(--light-shadow);
@@ -445,34 +375,24 @@ button {
 
 .locker-header {
   display: flex;
-
   align-items: center;
   justify-content: space-between;
-
   margin-bottom: 16px;
 }
 
 .locker-label {
   margin: 0;
-
   font-size: 15px;
-
   font-weight: 500;
-
   letter-spacing: 0.04em;
-
   color: var(--muted);
 }
 
 .connected {
   display: flex;
-
   align-items: center;
-
   gap: 8px;
-
-  color: var(--primary);
-
+  color: #1b8014;
   font-size: 14px;
 }
 
@@ -480,13 +400,10 @@ button {
 .device-dot {
   width: 10px;
   height: 10px;
-
   border-radius: 50%;
-
-  background: #fd598e;
-
+  background: #35e328;
   box-shadow:
-    0 0 12px rgba(253, 89, 142, 0.75);
+    0 0 12px rgba(89, 253, 133, 0.8);
 }
 
 
@@ -496,56 +413,13 @@ button {
 
 .locker-device {
   padding: 24px;
-
   border-radius: 25px;
-
   background: var(--bg);
-
   border: none;
-
   box-shadow:
     inset 6px 6px 12px var(--dark-shadow),
     inset -6px -6px 12px var(--light-shadow);
 }
-
-
-/* =========================================================
-   DEVICE NAME
-========================================================= */
-
-.device-name {
-  height: 39px;
-
-  display: flex;
-
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 0 20px;
-
-  margin-bottom: 20px;
-
-  border-radius: 15px;
-
-  background: var(--bg);
-
-  box-shadow:
-    inset 4px 4px 8px var(--dark-shadow),
-    inset -4px -4px 8px var(--light-shadow);
-}
-
-.device-name span:first-child {
-  font-size: 13px;
-
-  letter-spacing: 0.2em;
-
-  color: var(--muted);
-}
-
-.device-name span:last-child {
-  color: var(--primary);
-}
-
 
 /* =========================================================
    COMPARTMENT
@@ -553,21 +427,13 @@ button {
 
 .compartment {
   position: relative;
-
   height: 180px;
-
   display: flex;
-
   flex-direction: column;
-
   justify-content: space-between;
-
   overflow: hidden;
-
   padding: 24px;
-
   border-radius: 24px;
-
   transition:
     background 0.3s ease,
     box-shadow 0.3s ease;
@@ -580,7 +446,6 @@ button {
 
 .compartment-locked {
   background: #f3dce7;
-
   box-shadow:
     inset 6px 6px 12px #d0b9c4,
     inset -6px -6px 12px #ffffff;
@@ -588,7 +453,6 @@ button {
 
 .dark .compartment-locked {
   background: #38262f;
-
   box-shadow:
     inset 6px 6px 12px #21171c,
     inset -6px -6px 12px #4b343f;
@@ -601,7 +465,6 @@ button {
 
 .compartment-unlocked {
   background: #f0dce9;
-
   box-shadow:
     inset 6px 6px 12px #cfb9c9,
     inset -6px -6px 12px #ffffff;
@@ -609,7 +472,6 @@ button {
 
 .dark .compartment-unlocked {
   background: #392630;
-
   box-shadow:
     inset 6px 6px 12px #21171b,
     inset -6px -6px 12px #4d343f;
@@ -622,13 +484,9 @@ button {
 
 .compartment-pattern {
   position: absolute;
-
   inset: 0;
-
   pointer-events: none;
-
   opacity: 0.08;
-
   background:
     repeating-linear-gradient(
       55deg,
@@ -641,7 +499,6 @@ button {
 
 .dark .compartment-pattern {
   opacity: 0.1;
-
   background:
     repeating-linear-gradient(
       55deg,
@@ -668,7 +525,6 @@ button {
 .compartment-top span,
 .compartment-bottom span {
   font-size: 13px;
-
   color: #817782;
 }
 
@@ -688,7 +544,6 @@ button {
 
 .lock-green {
   color: #cf4197;
-
   filter:
     drop-shadow(
       0 0 5px rgba(207, 65, 151, 0.45)
@@ -697,7 +552,6 @@ button {
 
 .lock-blue {
   color: #fd598e;
-
   filter:
     drop-shadow(
       0 0 5px rgba(253, 89, 142, 0.45)
@@ -719,11 +573,8 @@ button {
 
 .compartment-center {
   position: relative;
-
   display: flex;
-
   flex-direction: column;
-
   align-items: center;
   justify-content: center;
 }
@@ -731,16 +582,11 @@ button {
 .lock-circle {
   width: 54px;
   height: 54px;
-
   display: flex;
-
   align-items: center;
   justify-content: center;
-
   margin-bottom: 12px;
-
   border-radius: 50%;
-
   box-shadow:
     5px 5px 10px rgba(0, 0, 0, 0.12),
     -5px -5px 10px rgba(255, 255, 255, 0.5);
@@ -753,14 +599,12 @@ button {
 
 .lock-circle-green {
   background: #f0d6e2;
-
-  color: #cf4197;
+  color: #38ac35;
 }
 
 .dark .lock-circle-green {
   background: #472a39;
-
-  color: #fd598e;
+  color: #38ac35;
 }
 
 
@@ -770,14 +614,12 @@ button {
 
 .lock-circle-blue {
   background: #f4dce8;
-
-  color: #fd598e;
+  color: #5969fd;
 }
 
 .dark .lock-circle-blue {
   background: #482a39;
-
-  color: #fd8d71;
+  color: #71befd;
 }
 
 
@@ -787,11 +629,8 @@ button {
 
 .status-pill {
   padding: 6px 16px;
-
   border-radius: 999px;
-
   font-size: 12px;
-
   box-shadow:
     inset 3px 3px 6px rgba(0, 0, 0, 0.08),
     inset -3px -3px 6px rgba(255, 255, 255, 0.4);
@@ -804,13 +643,11 @@ button {
 
 .status-locked {
   background: #f0d6e2;
-
   color: #c23f8d;
 }
 
 .dark .status-locked {
   background: #472a39;
-
   color: #fd598e;
 }
 
@@ -821,13 +658,11 @@ button {
 
 .status-unlocked {
   background: #f4dce8;
-
   color: #df5c91;
 }
 
 .dark .status-unlocked {
   background: #482a39;
-
   color: #fd8d71;
 }
 
@@ -839,22 +674,19 @@ button {
 .compartment-status-dot {
   width: 13px;
   height: 13px;
-
   border-radius: 50%;
 }
 
 .status-dot-green {
-  background: #fd598e;
-
+  background: #64fd59;
   box-shadow:
-    0 0 14px rgba(253, 89, 142, 0.75);
+    0 0 14px rgba(89, 253, 133, 0.8);
 }
 
 .status-dot-blue {
-  background: #fd8d71;
-
+  background: #1084f1;
   box-shadow:
-    0 0 14px rgba(253, 141, 113, 0.65);
+    0 0 14px rgba(89, 155, 253, 0.8);
 }
 
 
@@ -865,22 +697,14 @@ button {
 .locker-button {
   width: 100%;
   height: 48px;
-
   display: flex;
-
   align-items: center;
   justify-content: center;
-
   gap: 8px;
-
   margin-top: 20px;
-
   border-radius: 14px;
-
   font-size: 14px;
-
   background: var(--bg);
-
   transition:
     box-shadow 0.2s ease,
     transform 0.2s ease,
@@ -893,7 +717,6 @@ button {
 
 .locker-button:active {
   transform: translateY(0);
-
   box-shadow:
     inset 5px 5px 10px var(--dark-shadow),
     inset -5px -5px 10px var(--light-shadow);
@@ -905,19 +728,18 @@ button {
 ========================================================= */
 
 .unlock-button {
-  color: #cf4197;
-
+  color: #38ac35;
   box-shadow:
     6px 6px 12px var(--dark-shadow),
     -6px -6px 12px var(--light-shadow);
 }
 
 .unlock-button:hover {
-  color: #fd598e;
+  color: #81f46a;
 }
 
 .dark .unlock-button {
-  color: #fd598e;
+  color: #74fd59;
 }
 
 
@@ -926,19 +748,18 @@ button {
 ========================================================= */
 
 .lock-button {
-  color: #fd598e;
-
+  color: #3055fb;
   box-shadow:
     6px 6px 12px var(--dark-shadow),
     -6px -6px 12px var(--light-shadow);
 }
 
 .lock-button:hover {
-  color: #fd8d71;
+  color: #54c6d2;
 }
 
 .dark .lock-button {
-  color: #fd8d71;
+  color: #3392fe;
 }
 
 
@@ -957,17 +778,11 @@ button {
 
 .tabs {
   display: grid;
-
   grid-template-columns: repeat(3, 1fr);
-
   padding: 6px;
-
   border: none;
-
   border-radius: 20px;
-
   background: var(--bg);
-
   box-shadow:
     inset 5px 5px 10px var(--dark-shadow),
     inset -5px -5px 10px var(--light-shadow);
@@ -975,17 +790,11 @@ button {
 
 .tab {
   position: relative;
-
   padding: 12px;
-
   border-radius: 15px;
-
   background: transparent;
-
   color: var(--muted);
-
   font-size: 14px;
-
   transition:
     background 0.2s ease,
     box-shadow 0.2s ease,
@@ -998,9 +807,7 @@ button {
 
 .active-tab {
   background: var(--bg);
-
   color: var(--primary);
-
   box-shadow:
     4px 4px 8px var(--dark-shadow),
     -4px -4px 8px var(--light-shadow);
@@ -1017,17 +824,12 @@ button {
 
 .notification-count {
   display: inline-flex;
-
   align-items: center;
   justify-content: center;
-
   width: 20px;
   height: 20px;
-
   margin-left: 8px;
-
   border-radius: 50%;
-
   background:
     linear-gradient(
       135deg,
@@ -1037,9 +839,7 @@ button {
     );
 
   color: white;
-
   font-size: 10px;
-
   box-shadow:
     2px 2px 5px rgba(0, 0, 0, 0.15);
 }
@@ -1051,34 +851,23 @@ button {
 
 .stat-grid {
   display: grid;
-
   grid-template-columns: repeat(3, 1fr);
-
   gap: 16px;
-
   margin-top: 20px;
 }
 
 .stat-card {
   height: 105px;
-
   display: flex;
-
   flex-direction: column;
-
   align-items: center;
   justify-content: center;
-
   border: none;
-
   border-radius: 20px;
-
   background: var(--bg);
-
   box-shadow:
     7px 7px 14px var(--dark-shadow),
     -7px -7px 14px var(--light-shadow);
-
   transition:
     transform 0.2s ease;
 }
@@ -1089,17 +878,13 @@ button {
 
 .stat-value {
   font-size: 25px;
-
   font-weight: 400;
-
   color: var(--text);
 }
 
 .stat-label {
   margin-top: 8px;
-
   font-size: 13px;
-
   color: var(--muted);
 }
 
@@ -1109,19 +894,19 @@ button {
 ========================================================= */
 
 .blue-text {
-  color: #cf4197;
+  color: #4a41cf;
 }
 
 .green-text {
-  color: #fd598e;
+  color: #00bd42;
 }
 
 .dark .blue-text {
-  color: #fd598e;
+  color: #3c8af7;
 }
 
 .dark .green-text {
-  color: #fd8d71;
+  color: #8bfd71;
 }
 
 
@@ -1131,15 +916,10 @@ button {
 
 .status-card {
   margin-top: 20px;
-
   padding: 24px;
-
   border: none;
-
   border-radius: 24px;
-
   background: var(--bg);
-
   box-shadow:
     10px 10px 20px var(--dark-shadow),
     -10px -10px 20px var(--light-shadow);
@@ -1147,32 +927,23 @@ button {
 
 .status-header {
   display: flex;
-
   align-items: center;
   justify-content: space-between;
-
   gap: 12px;
 }
 
 .status-header h2 {
   margin: 0;
-
   font-size: 17px;
-
   font-weight: 500;
-
   color: var(--text);
 }
 
 .locker-status {
   display: flex;
-
   align-items: center;
-
   gap: 8px;
-
   font-size: 14px;
-
   color: var(--primary);
 }
 
@@ -1183,23 +954,16 @@ button {
 
 .info-grid {
   display: grid;
-
   grid-template-columns: repeat(2, 1fr);
-
   gap: 16px;
-
   margin-top: 20px;
 }
 
 .info-card {
   min-height: 78px;
-
   padding: 16px;
-
   border-radius: 15px;
-
   background: var(--bg);
-
   box-shadow:
     inset 4px 4px 8px var(--dark-shadow),
     inset -4px -4px 8px var(--light-shadow);
@@ -1207,17 +971,13 @@ button {
 
 .info-title {
   margin: 0;
-
   font-size: 10px;
-
   color: var(--muted);
 }
 
 .info-value {
   margin: 8px 0 0;
-
   font-size: 17px;
-
   color: var(--text);
 }
 
@@ -1228,26 +988,16 @@ button {
 
 .empty-state {
   min-height: 350px;
-
   display: flex;
-
   flex-direction: column;
-
   align-items: center;
   justify-content: center;
-
   margin-top: 20px;
-
   padding: 30px;
-
   border: none;
-
   border-radius: 24px;
-
   text-align: center;
-
   background: var(--bg);
-
   box-shadow:
     10px 10px 20px var(--dark-shadow),
     -10px -10px 20px var(--light-shadow);
@@ -1255,9 +1005,7 @@ button {
 
 .empty-icon {
   margin-bottom: 16px;
-
   color: #cf4197;
-
   filter:
     drop-shadow(
       2px 2px 4px var(--dark-shadow)
@@ -1270,19 +1018,14 @@ button {
 
 .empty-state h2 {
   margin: 0;
-
   font-size: 18px;
-
   font-weight: 500;
-
   color: var(--text);
 }
 
 .empty-state p {
   margin: 8px 0 0;
-
   font-size: 14px;
-
   color: var(--muted);
 }
 
@@ -1293,23 +1036,18 @@ button {
 
 .compartment-summary {
   margin: 20px 0 12px;
-
   font-size: 14px;
-
   color: var(--text);
 }
 
 .compartment-summary strong {
   color: var(--primary);
-
   font-weight: 600;
 }
 
 .compartment-empty-note {
   margin: 20px 0 0;
-
   font-size: 14px;
-
   color: var(--muted);
 }
 
@@ -1320,28 +1058,20 @@ button {
 
 .package-mini-list {
   display: flex;
-
   flex-direction: column;
-
   gap: 10px;
 }
 
 .package-mini-row {
   display: flex;
-
   align-items: center;
   justify-content: space-between;
-
   padding: 14px 16px;
-
   border-radius: 15px;
-
   background: var(--bg);
-
   box-shadow:
     inset 4px 4px 8px var(--dark-shadow),
     inset -4px -4px 8px var(--light-shadow);
-
   transition:
     transform 0.2s ease;
 }
@@ -1352,29 +1082,21 @@ button {
 
 .package-mini-id {
   margin: 0;
-
   font-size: 14px;
-
   font-weight: 500;
-
   color: var(--text);
 }
 
 .package-mini-sender {
   margin: 2px 0 0;
-
   font-size: 12px;
-
   color: var(--muted);
 }
 
 .package-mini-time {
   margin-left: 12px;
-
   font-size: 12px;
-
   white-space: nowrap;
-
   color: var(--muted);
 }
 
@@ -1389,35 +1111,25 @@ button {
 
 .package-group-title {
   margin: 0 0 12px;
-
   font-size: 13px;
-
   font-weight: 500;
-
   letter-spacing: 0.04em;
-
   color: var(--muted);
 }
 
 .package-list {
   display: flex;
-
   flex-direction: column;
-
   gap: 16px;
 }
 
 .package-card {
   padding: 24px;
-
   border-radius: 24px;
-
   background: var(--bg);
-
   box-shadow:
     10px 10px 20px var(--dark-shadow),
     -10px -10px 20px var(--light-shadow);
-
   transition:
     transform 0.2s ease;
 }
@@ -1474,15 +1186,10 @@ button {
 
 .gradient-border::before {
   content: "";
-
   position: absolute;
-
   inset: 0;
-
   padding: 1px;
-
   border-radius: inherit;
-
   background:
     linear-gradient(
       135deg,
@@ -1495,11 +1202,8 @@ button {
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
-
   -webkit-mask-composite: xor;
-
   mask-composite: exclude;
-
   pointer-events: none;
 }
 
@@ -1530,9 +1234,7 @@ button {
 }
 
 
-/* =========================================================
-   RESPONSIVE — TABLET
-========================================================= */
+
 
 @media (min-width: 768px) {
 
@@ -1548,10 +1250,6 @@ button {
   }
 }
 
-
-/* =========================================================
-   RESPONSIVE — DESKTOP
-========================================================= */
 
 @media (min-width: 1024px) {
 
@@ -1571,10 +1269,6 @@ button {
   }
 }
 
-
-/* =========================================================
-   SMALL SCREENS
-========================================================= */
 
 @media (max-width: 600px) {
 
