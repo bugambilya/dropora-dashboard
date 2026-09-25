@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Package,
   Truck,
@@ -13,13 +13,60 @@ import {
   ChevronRight,
   ScanLine,
   Moon,
-  Sun
+  Sun,
+  X
 } from "lucide-react";
 
 function Dashboard({ darkMode, setDarkMode }) {
   const [trackingNumber, setTrackingNumber] = useState("");
   const [activeTab, setActiveTab] = useState("Overview");
   const [isLocked, setIsLocked] = useState(true);
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: "Parcel Ready for Pickup",
+      message: "Your Apple Store parcel (DRO-4821) is ready for collection.",
+      time: "2 mins ago",
+      read: false,
+    },
+    {
+      id: 2,
+      title: "Locker Connected",
+      message: "Your Dropora locker is back online and connected.",
+      time: "1 hour ago",
+      read: false,
+    },
+  ]);
+
+  const notificationRef = useRef(null);
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // close the dropdown when clicking anywhere outside it
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(e.target)
+      ) {
+        setShowNotifications(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleNotifications = () => {
+    setShowNotifications((prev) => !prev);
+
+    // mark everything read once the panel is opened
+    if (!showNotifications) {
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    }
+  };
 
   const currentParcel = {
     tracking: "DRO-4821",
@@ -144,13 +191,59 @@ function Dashboard({ darkMode, setDarkMode }) {
     </button>
 
     {/* Notification */}
-    <button className="notification-button">
-      <Bell size={19} />
+    <div className="notification-wrapper" ref={notificationRef}>
+      <button
+        className="notification-button"
+        onClick={toggleNotifications}
+        aria-label="Notifications"
+      >
+        <Bell size={19} />
 
-      <span className="notification-badge">
-        2
-      </span>
-    </button>
+        {unreadCount > 0 && (
+          <span className="notification-badge">
+            {unreadCount}
+          </span>
+        )}
+      </button>
+
+      {showNotifications && (
+        <div className="notification-panel">
+          <div className="notification-panel-header">
+            <h3>Notifications</h3>
+
+            <button
+              className="notification-close"
+              onClick={() => setShowNotifications(false)}
+              aria-label="Close notifications"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="notification-panel-list">
+            {notifications.length === 0 ? (
+              <p className="notification-empty">
+                No notifications yet.
+              </p>
+            ) : (
+              notifications.map((note) => (
+                <div className="notification-item" key={note.id}>
+                  <div className="notification-item-icon">
+                    <Package size={16} />
+                  </div>
+
+                  <div className="notification-item-content">
+                    <h4>{note.title}</h4>
+                    <p>{note.message}</p>
+                    <span>{note.time}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
 
   </div>
 
