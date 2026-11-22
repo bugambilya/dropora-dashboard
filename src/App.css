@@ -5441,3 +5441,368 @@ input:focus-visible {
     margin-top: 0;
   }
 }
+.dashboard-body {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.dashboard-page-content {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+/* ==============================
+   DASHBOARD LAYOUT
+============================== */
+
+.dashboard-body {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background: #f5f5f7;
+}
+
+/* ==============================
+   SIDEBAR
+============================== */
+
+.dashboard-sidebar {
+  width: 280px;
+  min-width: 280px;
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 20px 18px;
+
+  background: #ffffff;
+  border-right: 1px solid #e5e5e5;
+
+  box-sizing: border-box;
+}
+
+/* ==============================
+   BRAND
+============================== */
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  margin-bottom: 35px;
+}
+
+.sidebar-brand-icon {
+  width: 55px;
+  height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 16px;
+
+  background: linear-gradient(135deg, #c83294, #a62cba);
+  color: white;
+
+  flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-brand-text strong {
+  font-size: 21px;
+  font-weight: 700;
+  color: #a52b9b;
+}
+
+.sidebar-brand-text small {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+}
+
+/* ==============================
+   NAVIGATION
+============================== */
+
+.sidebar-navigation {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-link {
+  width: 100%;
+  min-height: 55px;
+
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+
+  border: none;
+  border-radius: 14px;
+
+  background: transparent;
+  color: #444;
+
+  text-decoration: none;
+
+  font-size: 16px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  box-sizing: border-box;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.sidebar-link svg {
+  flex-shrink: 0;
+}
+
+.sidebar-link:hover {
+  background: #f8e8f4;
+  color: #c83294;
+}
+
+/* ACTIVE LINK */
+
+.sidebar-link.active {
+  background: #cc3c9b;
+  color: #ffffff;
+
+  font-weight: 600;
+}
+
+.sidebar-link.active:hover {
+  background: #bd3290;
+}
+
+/* ==============================
+   SPACER
+============================== */
+
+.sidebar-spacer {
+  flex: 1;
+  min-height: 30px;
+}
+
+/* ==============================
+   LOGOUT
+============================== */
+
+.sidebar-logout {
+  color: #dc4444;
+}
+
+.sidebar-logout:hover {
+  background: #fff0f0;
+  color: #c92d2d;
+}
+
+/* ==============================
+   MAIN CONTENT
+============================== */
+
+.dashboard-page-content {
+  flex: 1;
+  min-width: 0;
+  padding: 2px;
+
+  box-sizing: border-box;
+}
+
+/* ==============================
+   RESPONSIVE
+============================== */
+
+@media (max-width: 768px) {
+  .dashboard-sidebar {
+    width: 230px;
+    min-width: 230px;
+    padding: 15px 12px;
+  }
+
+  .sidebar-link {
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .dashboard-page-content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-sidebar {
+    width: 75px;
+    min-width: 75px;
+    padding: 15px 8px;
+  }
+
+  .sidebar-brand {
+    justify-content: center;
+  }
+
+  .sidebar-brand-text {
+    display: none;
+  }
+
+  .sidebar-link {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .sidebar-link span {
+    display: none;
+  }
+}
+
+/* ==========================================
+   DASHBOARD DARK MODE
+   ========================================== */
+
+.app.dark .dashboard-body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* SIDEBAR */
+.app.dark .dashboard-sidebar {
+  background: var(--card-bg);
+  border-right: 1px solid #302b36;
+  color: var(--text);
+}
+
+/* BRAND */
+.app.dark .sidebar-brand-text strong {
+  color: var(--primary);
+}
+
+.app.dark .sidebar-brand-text small {
+  color: var(--muted);
+}
+
+/* NAVIGATION LINKS */
+.app.dark .sidebar-link {
+  color: var(--text);
+  background: transparent;
+}
+
+/* HOVER */
+.app.dark .sidebar-link:hover {
+  background: #302633;
+  color: var(--primary);
+}
+
+/* ACTIVE LINK */
+.app.dark .sidebar-link.active {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+/* LOGOUT */
+.app.dark .sidebar-logout {
+  color: #ff7070;
+}
+
+.app.dark .sidebar-logout:hover {
+  background: #382323;
+  color: #ff8585;
+}
+
+/* MAIN CONTENT */
+.app.dark .dashboard-page-content {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* =========================================
+   HEADER CONTROLS - ALIGN TO RIGHT
+========================================= */
+
+.header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 15px;
+
+  margin-left: auto;
+}
+
+/* ONLINE STATUS */
+.online-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  white-space: nowrap;
+}
+
+/* ONLINE DOT */
+.online-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+/* DARK MODE BUTTON */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 40px;
+  height: 40px;
+
+  border: none;
+  border-radius: 12px;
+
+  cursor: pointer;
+}
+
+/* NOTIFICATION BUTTON */
+.notification-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 40px;
+  height: 40px;
+
+  position: relative;
+
+  border: none;
+  border-radius: 12px;
+
+  cursor: pointer;
+}
+
+/* NOTIFICATION DROPDOWN */
+.notification-wrapper {
+  position: relative;
+}
+
+/* MOBILE */
+@media (max-width: 600px) {
+  .header-controls {
+    gap: 8px;
+  }
+
+  .online-status {
+    font-size: 12px;
+  }
+}

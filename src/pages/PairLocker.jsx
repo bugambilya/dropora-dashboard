@@ -130,16 +130,6 @@ function PairLocker() {
     <div className="pair-locker-page">
       <div className="pair-locker-container">
 
-        {/* Back Button */}
-        <button
-          type="button"
-          className="pair-back-button"
-          onClick={() => navigate("/dashboard")}
-        >
-          <ArrowLeft size={18} />
-          Back to Dashboard
-        </button>
-
         <div className="pair-locker-card">
 
           {/* Icon */}

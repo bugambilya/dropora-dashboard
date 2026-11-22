@@ -131,17 +131,11 @@ function LockerManagement() {
 
         {/* HEADER */}
         <header className="locker-management-header">
-          <button
-            className="locker-back-button"
-            onClick={() => navigate("/dashboard")}
-          >
-            <ArrowLeft size={18} />
-            Back to Dashboard
-          </button>
+          
 
           <div className="locker-header-title">
             <div>
-              <h1>My Lockers</h1>
+              <h1>My Locker</h1>
               <p>Manage your connected DROPORA smart lockers.</p>
             </div>
 
@@ -158,6 +152,8 @@ function LockerManagement() {
             </button>
           </div>
         </header>
+
+        
 
         {/* SUMMARY */}
         <section className="locker-summary-card">

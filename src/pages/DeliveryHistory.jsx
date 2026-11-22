@@ -148,14 +148,6 @@ function DeliveryHistory() {
         <div className="delivery-history-header">
 
           <button
-            className="delivery-back-button"
-            onClick={() => navigate("/dashboard")}
-          >
-            <ArrowLeft size={18} />
-            Back to Dashboard
-          </button>
-
-          <button
             className="delivery-refresh-button"
             onClick={fetchHistory}
             disabled={loading}

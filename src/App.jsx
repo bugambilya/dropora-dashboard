@@ -1,22 +1,38 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
+
 import Dashboard from "./pages/Dashboard";
+import DashboardLayout from "./pages/DashboardLayout";
+
 import PairLocker from "./pages/PairLocker";
 import LockerManagement from "./pages/LockerManagement.jsx";
 import DeliveryHistory from "./pages/DeliveryHistory";
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(
+    localStorage.getItem("darkMode") === "true"
+  );
+
+  // APPLY DARK MODE
+  useEffect(() => {
+    document.documentElement.classList.toggle(
+      "dark-mode",
+      darkMode
+    );
+
+    localStorage.setItem("darkMode", darkMode);
+  }, [darkMode]);
 
   return (
     <div className={darkMode ? "app dark" : "app light"}>
+
       <BrowserRouter>
         <Routes>
 
@@ -72,41 +88,50 @@ function App() {
             }
           />
 
-          {/* MAIN DASHBOARD */}
+          {/* SHARED DASHBOARD LAYOUT */}
           <Route
-            path="/dashboard"
-            element={
-              <Dashboard
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-              />
-            }
-          />
+            element={<DashboardLayout />}
+          >
 
-          {/* LOCKER MANAGEMENT */}
-        
-          <Route
-            path="/pair-locker"
-            element={<PairLocker />}
-              />
-          <Route
-          path="/lockers"
-          element={<LockerManagement />}
-          />
+            {/* DASHBOARD */}
+            <Route
+              path="/dashboard"
+              element={
+                <Dashboard
+                  darkMode={darkMode}
+                  setDarkMode={setDarkMode}
+                />
+              }
+            />
 
-          {/* DELIVERY HISTORY */}
-          <Route
-            path="/delivery-history"
-            element={
-              <DeliveryHistory
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-              />
-            }
-          />
+            {/* LOCKER MANAGEMENT */}
+            <Route
+              path="/lockers"
+              element={<LockerManagement />}
+            />
+
+            {/* PAIR LOCKER */}
+            <Route
+              path="/pair-locker"
+              element={<PairLocker />}
+            />
+
+            {/* DELIVERY HISTORY */}
+            <Route
+              path="/delivery-history"
+              element={
+                <DeliveryHistory
+                  darkMode={darkMode}
+                  setDarkMode={setDarkMode}
+                />
+              }
+            />
+
+          </Route>
 
         </Routes>
       </BrowserRouter>
+
     </div>
   );
 }
