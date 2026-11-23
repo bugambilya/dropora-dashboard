@@ -1,4 +1,6 @@
+
 import { useState } from "react";
+import { apiRequest } from "../services/api";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Lock,
@@ -16,13 +18,59 @@ function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = (e) => {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Temporary login
-    // We will connect this to Firebase later.
-    if (email && password) {
+    setError("");
+    setLoading(true);
+
+    try {
+      // Send login request to backend
+      const data = await apiRequest("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
+
+      // Check if session exists
+      if (!data.session) {
+        throw new Error("Login failed. No session received.");
+      }
+
+      /// Store authentication tokens
+        localStorage.setItem(
+        "accessToken",
+         data.session.access_token
+          );
+
+        localStorage.setItem(
+         "refreshToken",
+         data.session.refresh_token
+        );
+
+      // Store user information
+      localStorage.setItem(
+        "user",
+        JSON.stringify(data.user)
+      );
+
+      // Login successful
       navigate("/dashboard");
+
+    } catch (err) {
+      console.error("Login error:", err);
+
+      setError(
+        err.message || "Invalid email or password."
+      );
+
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,6 +94,7 @@ function Login() {
         <div className="auth-card">
 
           <div className="auth-header">
+
             <div className="auth-icon">
               <Lock size={25} />
             </div>
@@ -55,41 +104,52 @@ function Login() {
             <p>
               Log in to manage your Dropora locker.
             </p>
+
           </div>
 
           <form onSubmit={handleLogin}>
+
+            {/* EMAIL */}
 
             <div className="form-group">
 
               <label>Email / Gmail</label>
 
               <div className="input-wrapper">
+
                 <Mail size={18} />
 
                 <input
                   type="email"
                   placeholder="you@gmail.com"
                   value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                  }}
                   required
                 />
+
               </div>
 
             </div>
 
+            {/* PASSWORD */}
+
             <div className="form-group">
 
               <div className="form-label-row">
+
                 <label>Password</label>
 
                 <Link to="/forgot-password">
                   Forgot Password?
                 </Link>
+
               </div>
 
               <div className="input-wrapper">
+
                 <Lock size={18} />
 
                 <input
@@ -100,9 +160,10 @@ function Login() {
                   }
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
                   required
                 />
 
@@ -119,16 +180,34 @@ function Login() {
                     <Eye size={18} />
                   )}
                 </button>
+
               </div>
 
             </div>
 
+            {/* ERROR MESSAGE */}
+
+            {error && (
+              <div className="auth-error">
+                {error}
+              </div>
+            )}
+
+            {/* LOGIN BUTTON */}
+
             <button
               type="submit"
               className="auth-primary-button"
+              disabled={loading}
             >
-              Login
-              <ArrowRight size={18} />
+              {loading ? (
+                "Logging in..."
+              ) : (
+                <>
+                  Login
+                  <ArrowRight size={18} />
+                </>
+              )}
             </button>
 
           </form>

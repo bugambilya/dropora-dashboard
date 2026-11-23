@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Package,
@@ -19,6 +20,13 @@ import {
   AlertCircle,
   LoaderCircle,
   Wifi,
+  Activity,
+  Scale,
+  Radar,
+  DoorClosed,
+  DoorOpen,
+  BatteryCharging,
+  Plus,
 } from "lucide-react";
 
 import "../App.css";
@@ -54,6 +62,11 @@ function Dashboard({ darkMode, setDarkMode }) {
   const [lockers, setLockers] = useState([]);
   const [lockersLoading, setLockersLoading] = useState(true);
   const [lockersError, setLockersError] = useState("");
+
+  // TELEMETRY
+  const [telemetry, setTelemetry] = useState([]);
+  const [telemetryLoading, setTelemetryLoading] = useState(false);
+  const [telemetryError, setTelemetryError] = useState("");
 
   const notificationRef = useRef(null);
 
@@ -109,6 +122,98 @@ function Dashboard({ darkMode, setDarkMode }) {
   useEffect(() => {
     fetchLockers();
   }, []);
+
+  // GET FIRST PAIRED LOCKER UUID
+  const deviceUuid = lockers[0]?.device_uuid;
+
+  // FETCH TELEMETRY
+  const fetchTelemetry = useCallback(async () => {
+    if (!deviceUuid) {
+      setTelemetry([]);
+      return;
+    }
+
+    try {
+      setTelemetryLoading(true);
+      setTelemetryError("");
+
+      const token = localStorage.getItem("accessToken");
+
+      if (!token) {
+        throw new Error("Please log in to view telemetry.");
+      }
+
+      const response = await fetch(
+        `${API_BASE}/api/telemetry/${encodeURIComponent(
+          deviceUuid
+        )}?offset=0&limit=10`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Unable to load telemetry data."
+        );
+      }
+
+      setTelemetry(
+        Array.isArray(data.telemetry)
+          ? data.telemetry
+          : []
+      );
+    } catch (error) {
+      setTelemetryError(
+        error.message || "Unable to load telemetry."
+      );
+    } finally {
+      setTelemetryLoading(false);
+    }
+  }, [deviceUuid]);
+
+  // AUTOMATIC TELEMETRY REFRESH EVERY 5 SECONDS
+  useEffect(() => {
+    if (!deviceUuid) {
+      setTelemetry([]);
+      return;
+    }
+
+    fetchTelemetry();
+
+    const interval = setInterval(() => {
+      fetchTelemetry();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [deviceUuid, fetchTelemetry]);
+
+  // LATEST TELEMETRY DATA
+  const latestTelemetry = telemetry[0];
+  const payload = latestTelemetry?.payload || {};
+
+  // ULTRASONIC DISTANCE
+  const distance =
+    payload.ultrasonic_distance_cm ??
+    payload.distance_cm ??
+    payload.proximity_distance_cm ??
+    payload.proximity_cm ??
+    payload.object_distance_cm ??
+    payload.distance ??
+    null;
+
+  // TELEMETRY VALUES
+  const weight = payload.object_weight_g;
+  const fillPercent = payload.box_fill_percent;
+  const solenoidLocked = payload.solenoid_locked;
+  const doorClosed = payload.door_closed;
+  const powerSaving = payload.power_saving;
 
   // CLOSE NOTIFICATION DROPDOWN WHEN CLICKING OUTSIDE
   useEffect(() => {
@@ -242,9 +347,6 @@ function Dashboard({ darkMode, setDarkMode }) {
 
       {/* HEADER */}
       <header className="header">
-
-        {/* LOGO REMOVED - NOW IN DASHBOARDLAYOUT */}
-
         <div className="header-controls">
 
           <div className="online-status">
@@ -521,6 +623,320 @@ function Dashboard({ darkMode, setDarkMode }) {
             <RefreshCw size={15} />
             Refresh locker list
           </button>
+
+        </section>
+
+        {/* TELEMETRY MONITORING */}
+        <section className="dashboard-telemetry-section">
+
+          <div className="dashboard-section-heading">
+
+            <div>
+              <p className="card-eyebrow">
+                IOT MONITORING
+              </p>
+
+              <h2>Locker Telemetry</h2>
+
+              <p>
+                Real-time sensor readings from your DROPORA device.
+              </p>
+            </div>
+
+            <button
+              className="locker-manage-all-button"
+              onClick={fetchTelemetry}
+              disabled={telemetryLoading || !deviceUuid}
+            >
+              <RefreshCw
+                size={16}
+                className={
+                  telemetryLoading
+                    ? "dashboard-spin"
+                    : ""
+                }
+              />
+              Refresh
+            </button>
+
+          </div>
+
+          {!deviceUuid ? (
+            <div className="dashboard-telemetry-message">
+              <Lock size={22} />
+
+              <div>
+                <h3>No locker connected</h3>
+                <p>
+                  Pair a DROPORA locker to view its sensor readings.
+                </p>
+              </div>
+            </div>
+          ) : telemetryLoading && telemetry.length === 0 ? (
+            <div className="dashboard-telemetry-message">
+              <LoaderCircle
+                size={22}
+                className="dashboard-spin"
+              />
+              <span>Loading telemetry data...</span>
+            </div>
+          ) : telemetryError ? (
+            <div className="dashboard-telemetry-message dashboard-telemetry-error">
+              <AlertCircle size={20} />
+
+              <span>{telemetryError}</span>
+
+              <button onClick={fetchTelemetry}>
+                Retry
+              </button>
+            </div>
+          ) : telemetry.length === 0 ? (
+            <div className="dashboard-telemetry-message">
+              <Activity size={22} />
+
+              <div>
+                <h3>No telemetry data available</h3>
+                <p>
+                  Waiting for your device to send sensor readings.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* SENSOR CARDS */}
+              <div className="dashboard-telemetry-grid">
+
+                {/* WEIGHT SENSOR */}
+                <div className="dashboard-telemetry-card">
+
+                  <div className="dashboard-telemetry-card-header">
+                    <div className="dashboard-telemetry-icon">
+                      <Scale size={22} />
+                    </div>
+
+                    <span className="dashboard-telemetry-label">
+                      WEIGHT SENSOR
+                    </span>
+                  </div>
+
+                  <div className="dashboard-telemetry-value">
+                    {weight !== undefined && weight !== null
+                      ? Number(weight).toLocaleString()
+                      : "--"}
+                    <span>g</span>
+                  </div>
+
+                  <p className="dashboard-telemetry-description">
+                    Object weight detected
+                  </p>
+
+                </div>
+
+                {/* ULTRASONIC SENSOR */}
+                <div className="dashboard-telemetry-card">
+
+                  <div className="dashboard-telemetry-card-header">
+                    <div className="dashboard-telemetry-icon">
+                      <Radar size={22} />
+                    </div>
+
+                    <span className="dashboard-telemetry-label">
+                      ULTRASONIC SENSOR
+                    </span>
+                  </div>
+
+                  <div className="dashboard-telemetry-value">
+                    {distance !== undefined && distance !== null
+                      ? Number(distance).toFixed(2)
+                      : "--"}
+                    <span>cm</span>
+                  </div>
+
+                  <p className="dashboard-telemetry-description">
+                    Distance measurement
+                  </p>
+
+                </div>
+
+                {/* SOLENOID LOCK */}
+                <div className="dashboard-telemetry-card">
+
+                  <div className="dashboard-telemetry-card-header">
+                    <div className="dashboard-telemetry-icon">
+                      {solenoidLocked === true ? (
+                        <Lock size={22} />
+                      ) : solenoidLocked === false ? (
+                        <Unlock size={22} />
+                      ) : (
+                        <Lock size={22} />
+                      )}
+                    </div>
+
+                    <span className="dashboard-telemetry-label">
+                      SOLENOID LOCK
+                    </span>
+                  </div>
+
+                  <div className="dashboard-telemetry-status-value">
+                    {solenoidLocked === true
+                      ? "Locked"
+                      : solenoidLocked === false
+                      ? "Unlocked"
+                      : "Unknown"}
+                  </div>
+
+                  <p className="dashboard-telemetry-description">
+                    Lock mechanism status
+                  </p>
+
+                </div>
+
+                {/* REED SWITCH */}
+                <div className="dashboard-telemetry-card">
+
+                  <div className="dashboard-telemetry-card-header">
+                    <div className="dashboard-telemetry-icon">
+                      {doorClosed === true ? (
+                        <DoorClosed size={22} />
+                      ) : doorClosed === false ? (
+                        <DoorOpen size={22} />
+                      ) : (
+                        <DoorClosed size={22} />
+                      )}
+                    </div>
+
+                    <span className="dashboard-telemetry-label">
+                      REED SWITCH
+                    </span>
+                  </div>
+
+                  <div className="dashboard-telemetry-status-value">
+                    {doorClosed === true
+                      ? "Closed"
+                      : doorClosed === false
+                      ? "Open"
+                      : "Unknown"}
+                  </div>
+
+                  <p className="dashboard-telemetry-description">
+                    Compartment door status
+                  </p>
+
+                </div>
+
+              </div>
+
+              {/* TELEMETRY OVERVIEW */}
+              <div className="dashboard-telemetry-overview">
+
+                {/* BOX FILL LEVEL */}
+                <div className="dashboard-telemetry-overview-card">
+
+                  <div className="dashboard-telemetry-overview-header">
+                    <div>
+                      <h3>Locker Fill Level</h3>
+                      <p>Estimated compartment occupancy</p>
+                    </div>
+
+                    <Activity size={20} />
+                  </div>
+
+                  <div className="dashboard-fill-value">
+                    {fillPercent !== undefined && fillPercent !== null
+                      ? `${fillPercent}%`
+                      : "--"}
+                  </div>
+
+                  <div className="dashboard-fill-bar">
+                    <div
+                      className="dashboard-fill-progress"
+                      style={{
+                        width: `${
+                          fillPercent !== undefined &&
+                          fillPercent !== null
+                            ? Math.min(
+                                Math.max(Number(fillPercent), 0),
+                                100
+                              )
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+
+                </div>
+
+                {/* POWER SAVING */}
+                <div className="dashboard-telemetry-overview-card">
+
+                  <div className="dashboard-telemetry-overview-header">
+                    <div>
+                      <h3>Power Saving</h3>
+                      <p>Device energy mode</p>
+                    </div>
+
+                    <BatteryCharging size={20} />
+                  </div>
+
+                  <div className="dashboard-telemetry-status-value">
+                    {powerSaving === true
+                      ? "Enabled"
+                      : powerSaving === false
+                      ? "Disabled"
+                      : "Unknown"}
+                  </div>
+
+                  <div
+                    className={`dashboard-telemetry-status-pill ${
+                      powerSaving === true
+                        ? "active"
+                        : powerSaving === false
+                        ? "inactive"
+                        : ""
+                    }`}
+                  >
+                    {powerSaving === true
+                      ? "Energy-saving mode active"
+                      : powerSaving === false
+                      ? "Normal operating mode"
+                      : "No status available"}
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* LAST UPDATE */}
+              <div className="dashboard-telemetry-last-update">
+
+                <Clock3 size={16} />
+
+                <span>
+                  Last updated:{" "}
+                  {latestTelemetry?.recorded_at
+                    ? new Date(
+                        latestTelemetry.recorded_at
+                      ).toLocaleString()
+                    : latestTelemetry?.created_at
+                    ? new Date(
+                        latestTelemetry.created_at
+                      ).toLocaleString()
+                    : latestTelemetry?.received_at
+                    ? new Date(
+                        latestTelemetry.received_at
+                      ).toLocaleString()
+                    : "Unknown"}
+                </span>
+
+                <span className="dashboard-telemetry-auto-refresh">
+                  <span className="online-dot"></span>
+                  Auto-refreshing every 5 seconds
+                </span>
+
+              </div>
+
+            </>
+          )}
 
         </section>
 

@@ -1,14 +1,14 @@
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
-  LockKeyhole,
   PackageCheck,
   ShieldCheck,
   CheckCircle,
   AlertCircle,
   LoaderCircle,
+  Copy,
 } from "lucide-react";
 
 import "../App.css";
@@ -16,113 +16,75 @@ import "../App.css";
 function PairLocker() {
   const navigate = useNavigate();
 
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [pairCode, setPairCode] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
 
-  const inputRefs = useRef([]);
+  const API_BASE =
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:3000/api";
 
-  // Handle individual OTP input
-  const handleChange = (value, index) => {
-    if (!/^\d?$/.test(value)) return;
-
-    const updatedOtp = [...otp];
-    updatedOtp[index] = value;
-
-    setOtp(updatedOtp);
-    setError("");
-
-    // Automatically focus the next input
-    if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  // Handle backspace
-  const handleKeyDown = (e, index) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  // Handle pasting a complete OTP
-  const handlePaste = (e) => {
-    e.preventDefault();
-
-    const pasted = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
-      .slice(0, 4);
-
-    if (!pasted) return;
-
-    const updatedOtp = ["", "", "", ""];
-
-    pasted.split("").forEach((digit, index) => {
-      updatedOtp[index] = digit;
-    });
-
-    setOtp(updatedOtp);
-    setError("");
-
-    inputRefs.current[Math.min(pasted.length, 3)]?.focus();
-  };
-
-  // Submit pairing code to backend
-  const handlePairLocker = async (e) => {
-    e.preventDefault();
-
-    const code = otp.join("");
-
-    if (code.length !== 4) {
-      setError("Please enter the complete 4-digit pairing code.");
-      return;
-    }
-
+  // Generate a pairing code
+  const handleGenerateCode = async () => {
     setLoading(true);
     setError("");
+    setSuccess(false);
+    setPairCode("");
+    setExpiresAt("");
 
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+      const token = localStorage.getItem("access_token");
 
-      // Retrieve token using the storage key configured by your login system.
-      // Change "accessToken" if your application uses a different key.
-      const token = localStorage.getItem("accessToken");
-
-      const headers = {
-        "Content-Type": "application/json",
-      };
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
+      if (!token) {
+        throw new Error("Please log in again.");
       }
 
-      const response = await fetch(`${API_BASE}/api/lockers/pair`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          otp: code,
-        }),
-      });
+      const response = await fetch(
+        `${API_BASE}/locker/pairing-code`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
-          data.message || data.error || "Unable to pair locker."
+          data.message ||
+          data.error ||
+          "Unable to generate pairing code."
         );
       }
 
+      setPairCode(data.pair_code);
+      setExpiresAt(data.expires_at);
       setSuccess(true);
-      setOtp(["", "", "", ""]);
 
     } catch (err) {
-      setError(
-        err.message || "Something went wrong. Please try again."
-      );
+      setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Copy pairing code
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(pairCode);
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+
+    } catch {
+      setError("Unable to copy pairing code.");
     }
   };
 
@@ -141,17 +103,38 @@ function PairLocker() {
             )}
           </div>
 
-          {/* Success Screen */}
+          {/* Pairing Code Generated */}
           {success ? (
             <div className="pair-success-content">
 
-              <h2>Locker Paired Successfully!</h2>
+              <h2>Pairing Code Generated!</h2>
 
               <p>
-                Your DROPORA locker has been connected to your
-                account. You can now manage your locker from
-                your dashboard.
+                Enter this code on your DROPORA smart locker
+                to connect it to your account.
               </p>
+
+              <div className="pair-code-display">
+                <div className="pair-code">
+                  {pairCode}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  className="pair-copy-button"
+                >
+                  <Copy size={16} />
+                  {copied ? "Copied!" : "Copy Code"}
+                </button>
+              </div>
+
+              {expiresAt && (
+                <p className="pair-expiry-text">
+                  Code expires:{" "}
+                  {new Date(expiresAt).toLocaleString()}
+                </p>
+              )}
 
               <button
                 type="button"
@@ -161,93 +144,65 @@ function PairLocker() {
                 View My Lockers
               </button>
 
+              <button
+                type="button"
+                className="pair-secondary-button"
+                onClick={handleGenerateCode}
+                disabled={loading}
+              >
+                {loading ? "Generating..." : "Generate New Code"}
+              </button>
+
             </div>
           ) : (
 
-            /* Pairing Form */
+            /* Generate Pairing Code */
             <>
               <h2>Pair Your Locker</h2>
 
               <p className="pair-description">
-                Connect your DROPORA smart locker by entering
-                the 4-digit OTP displayed on your locker.
+                Generate a secure 4-digit pairing code to connect
+                your DROPORA smart locker to your account.
               </p>
 
-              <form onSubmit={handlePairLocker}>
-
-                <label className="pair-otp-label">
-                  Enter 4-digit pairing code
-                </label>
-
-                {/* OTP Inputs */}
-                <div className="pair-otp-inputs">
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      ref={(el) => {
-                        inputRefs.current[index] = el;
-                      }}
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      aria-label={`Pairing code digit ${index + 1}`}
-                      maxLength={1}
-                      value={digit}
-                      disabled={loading}
-                      onChange={(e) =>
-                        handleChange(e.target.value, index)
-                      }
-                      onKeyDown={(e) =>
-                        handleKeyDown(e, index)
-                      }
-                      onPaste={handlePaste}
-                    />
-                  ))}
+              {error && (
+                <div className="pair-error-message" role="alert">
+                  <AlertCircle size={16} />
+                  {error}
                 </div>
+              )}
 
-                {/* Error Message */}
-                {error && (
-                  <div className="pair-error-message" role="alert">
-                    <AlertCircle size={16} />
-                    {error}
-                  </div>
+              <button
+                type="button"
+                className="pair-primary-button"
+                onClick={handleGenerateCode}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <LoaderCircle
+                      className="pair-spinner"
+                      size={18}
+                    />
+                    Generating Code...
+                  </>
+                ) : (
+                  <>
+                    <PackageCheck size={18} />
+                    Generate Pairing Code
+                  </>
                 )}
+              </button>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  className="pair-primary-button"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <LoaderCircle
-                        className="pair-spinner"
-                        size={18}
-                      />
-                      Pairing...
-                    </>
-                  ) : (
-                    <>
-                      <LockKeyhole size={18} />
-                      Pair Locker
-                    </>
-                  )}
-                </button>
-
-              </form>
-
-              {/* Security Note */}
               <div className="pair-security-note">
                 <ShieldCheck size={16} />
                 Secure locker pairing
               </div>
 
               <p className="pair-help-text">
-                Don't have a pairing code? Check your DROPORA
-                locker display or contact your administrator.
+                Your pairing code is valid for 5 minutes.
+                Enter it on your physical locker before it expires.
               </p>
-
             </>
           )}
 

@@ -2,14 +2,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   Lock,
-  Unlock,
   RefreshCw,
   Trash2,
   Plus,
-  Wifi,
-  WifiOff,
   CalendarDays,
   AlertCircle,
   CheckCircle2,
@@ -18,7 +14,8 @@ import {
 
 import "../App.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE =
+  import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 function LockerManagement() {
   const navigate = useNavigate();
@@ -39,14 +36,14 @@ function LockerManagement() {
 
       setError("");
 
-      const token = localStorage.getItem("accessToken");
+      const token = localStorage.getItem("access_token");
 
       if (!token) {
         throw new Error("You are not logged in. Please log in again.");
       }
 
       const response = await fetch(
-        `${API_BASE}/api/lockers/paired`,
+        `${API_BASE}/locker/paired`,
         {
           method: "GET",
           headers: {
@@ -56,15 +53,20 @@ function LockerManagement() {
         }
       );
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
-          data.error || "Unable to retrieve paired lockers."
+          data.error ||
+            data.message ||
+            "Unable to retrieve paired lockers."
         );
       }
 
-      setLockers(Array.isArray(data.devices) ? data.devices : []);
+      setLockers(
+        Array.isArray(data.devices) ? data.devices : []
+      );
+
     } catch (err) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -88,14 +90,14 @@ function LockerManagement() {
       setUnpairingUuid(deviceUuid);
       setError("");
 
-      const token = localStorage.getItem("accessToken");
+      const token = localStorage.getItem("access_token");
 
       if (!token) {
         throw new Error("You are not logged in. Please log in again.");
       }
 
       const response = await fetch(
-        `${API_BASE}/api/lockers/unpair/${encodeURIComponent(deviceUuid)}`,
+        `${API_BASE}/locker/unpair/${encodeURIComponent(deviceUuid)}`,
         {
           method: "DELETE",
           headers: {
@@ -105,10 +107,12 @@ function LockerManagement() {
         }
       );
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error || "Unable to unpair locker.");
+        throw new Error(
+          data.error || data.message || "Unable to unpair locker."
+        );
       }
 
       setLockers((previous) =>
@@ -118,11 +122,30 @@ function LockerManagement() {
       );
 
       window.alert("Locker successfully unpaired.");
+
     } catch (err) {
       setError(err.message || "Unable to unpair locker.");
     } finally {
       setUnpairingUuid(null);
     }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "Unknown";
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Unknown";
+    }
+
+    return parsedDate.toLocaleString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -131,12 +154,12 @@ function LockerManagement() {
 
         {/* HEADER */}
         <header className="locker-management-header">
-          
-
           <div className="locker-header-title">
             <div>
               <h1>My Locker</h1>
-              <p>Manage your connected DROPORA smart lockers.</p>
+              <p>
+                Manage your connected DROPORA smart lockers.
+              </p>
             </div>
 
             <button
@@ -152,8 +175,6 @@ function LockerManagement() {
             </button>
           </div>
         </header>
-
-        
 
         {/* SUMMARY */}
         <section className="locker-summary-card">
@@ -178,7 +199,10 @@ function LockerManagement() {
         {/* LOADING */}
         {loading ? (
           <div className="locker-loading">
-            <LoaderCircle size={30} className="locker-spinning" />
+            <LoaderCircle
+              size={30}
+              className="locker-spinning"
+            />
             <p>Loading your lockers...</p>
           </div>
         ) : lockers.length === 0 ? (
@@ -191,8 +215,8 @@ function LockerManagement() {
             <h2>No Paired Lockers</h2>
 
             <p>
-              You haven't paired a DROPORA locker with your account yet.
-              Pair a device to start managing it here.
+              You haven't paired a DROPORA locker with your
+              account yet. Pair a device to start managing it here.
             </p>
 
             <button
@@ -225,7 +249,7 @@ function LockerManagement() {
               {lockers.map((locker) => (
                 <article
                   className="locker-device-card"
-                  key={locker.id}
+                  key={locker.id || locker.device_uuid}
                 >
                   <div className="locker-device-main">
                     <div className="locker-device-icon">
@@ -241,12 +265,7 @@ function LockerManagement() {
 
                       <p className="locker-paired-date">
                         <CalendarDays size={15} />
-                        Paired:{" "}
-                        {locker.paired_at
-                          ? new Date(
-                              locker.paired_at
-                            ).toLocaleString()
-                          : "Unknown"}
+                        Paired: {formatDate(locker.paired_at)}
                       </p>
                     </div>
                   </div>
@@ -262,7 +281,9 @@ function LockerManagement() {
                       onClick={() =>
                         handleUnpair(locker.device_uuid)
                       }
-                      disabled={unpairingUuid === locker.device_uuid}
+                      disabled={
+                        unpairingUuid === locker.device_uuid
+                      }
                     >
                       {unpairingUuid === locker.device_uuid ? (
                         <LoaderCircle

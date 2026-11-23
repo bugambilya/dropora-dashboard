@@ -1,13 +1,10 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   Package,
   Search,
   Clock,
   CheckCircle,
-  Truck,
   XCircle,
   RefreshCw,
   History,
@@ -16,47 +13,40 @@ import {
 import "../App.css";
 
 function DeliveryHistory() {
-  const navigate = useNavigate();
-
   const [deliveries, setDeliveries] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const API_BASE =
+    import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
   const fetchHistory = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
-      const token = localStorage.getItem("accessToken");
+      const token = localStorage.getItem("access_token");
 
-      const headers = {};
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const response = await fetch(
-        `${API_BASE}/api/deliveries/history`,
-        { headers }
-      );
+      const response = await fetch(`${API_BASE}/delivery`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
-          data.message || data.error || "Unable to load delivery history."
+          data.message ||
+            data.error ||
+            "Unable to load delivery history."
         );
       }
 
-      // Supports either an array or common API response formats.
-      const records = Array.isArray(data)
-        ? data
-        : data.deliveries || data.history || data.data || [];
-
-      setDeliveries(records);
+      setDeliveries(data.deliveries || []);
 
     } catch (err) {
       setError(err.message || "Something went wrong.");
@@ -69,44 +59,36 @@ function DeliveryHistory() {
     fetchHistory();
   }, []);
 
+  // Backend statuses:
+  // to_receive, received, cancelled
   const getStatus = (delivery) =>
-    String(delivery.status || "Pending").toLowerCase();
+    String(delivery.status || "to_receive").toLowerCase();
 
   const filteredDeliveries = deliveries.filter((delivery) => {
-    const tracking = String(
-      delivery.trackingNumber ||
-      delivery.tracking_number ||
-      delivery.trackingId ||
-      ""
-    );
+    const tracking = String(delivery.parcel_id || "");
+    const courier = String(delivery.courier_type || "");
 
-    const courier = String(delivery.courier || "");
+    const searchTerm = search.toLowerCase();
 
     const matchesSearch =
-      tracking.toLowerCase().includes(search.toLowerCase()) ||
-      courier.toLowerCase().includes(search.toLowerCase());
+      tracking.toLowerCase().includes(searchTerm) ||
+      courier.toLowerCase().includes(searchTerm);
 
     const status = getStatus(delivery);
 
     const matchesFilter =
       filter === "All" ||
-      (filter === "Delivered" && status === "delivered") ||
-      (filter === "Pending" && status === "pending") ||
-      (filter === "In Transit" &&
-        ["in_transit", "in transit", "in-transit"].includes(status));
+      (filter === "To Receive" && status === "to_receive") ||
+      (filter === "Received" && status === "received") ||
+      (filter === "Cancelled" && status === "cancelled");
 
     return matchesSearch && matchesFilter;
   });
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "delivered":
+      case "received":
         return <CheckCircle size={16} />;
-
-      case "in_transit":
-      case "in transit":
-      case "in-transit":
-        return <Truck size={16} />;
 
       case "cancelled":
         return <XCircle size={16} />;
@@ -117,10 +99,18 @@ function DeliveryHistory() {
   };
 
   const formatStatus = (status) => {
-    return String(status || "Pending")
-      .replaceAll("_", " ")
-      .replaceAll("-", " ")
-      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    const statusLabels = {
+      to_receive: "To Receive",
+      received: "Received",
+      cancelled: "Cancelled",
+    };
+
+    return (
+      statusLabels[status] ||
+      String(status)
+        .replaceAll("_", " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    );
   };
 
   const formatDate = (date) => {
@@ -139,23 +129,33 @@ function DeliveryHistory() {
     });
   };
 
+  const totalDeliveries = deliveries.length;
+
+  const receivedCount = deliveries.filter(
+    (delivery) => getStatus(delivery) === "received"
+  ).length;
+
+  const pendingCount = deliveries.filter(
+    (delivery) => getStatus(delivery) === "to_receive"
+  ).length;
+
   return (
     <div className="delivery-history-page">
-
       <div className="delivery-history-container">
 
         {/* Header */}
         <div className="delivery-history-header">
-
           <button
             className="delivery-refresh-button"
             onClick={fetchHistory}
             disabled={loading}
           >
-            <RefreshCw size={17} />
+            <RefreshCw
+              size={17}
+              className={loading ? "delivery-loading-icon" : ""}
+            />
             Refresh
           </button>
-
         </div>
 
         {/* Title */}
@@ -175,33 +175,28 @@ function DeliveryHistory() {
 
           <div className="delivery-history-stat">
             <Package size={22} />
+
             <div>
-              <h3>{deliveries.length}</h3>
+              <h3>{totalDeliveries}</h3>
               <p>Total Deliveries</p>
             </div>
           </div>
 
           <div className="delivery-history-stat">
             <CheckCircle size={22} />
+
             <div>
-              <h3>
-                {deliveries.filter(
-                  (d) => getStatus(d) === "delivered"
-                ).length}
-              </h3>
-              <p>Delivered</p>
+              <h3>{receivedCount}</h3>
+              <p>Received</p>
             </div>
           </div>
 
           <div className="delivery-history-stat">
             <Clock size={22} />
+
             <div>
-              <h3>
-                {deliveries.filter(
-                  (d) => getStatus(d) === "pending"
-                ).length}
-              </h3>
-              <p>Pending</p>
+              <h3>{pendingCount}</h3>
+              <p>To Receive</p>
             </div>
           </div>
 
@@ -215,7 +210,7 @@ function DeliveryHistory() {
 
             <input
               type="text"
-              placeholder="Search tracking number or courier..."
+              placeholder="Search parcel ID or courier..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -226,9 +221,9 @@ function DeliveryHistory() {
             onChange={(e) => setFilter(e.target.value)}
           >
             <option value="All">All Deliveries</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Pending">Pending</option>
-            <option value="In Transit">In Transit</option>
+            <option value="To Receive">To Receive</option>
+            <option value="Received">Received</option>
+            <option value="Cancelled">Cancelled</option>
           </select>
 
         </div>
@@ -238,7 +233,10 @@ function DeliveryHistory() {
 
           {loading ? (
             <div className="delivery-history-message">
-              <RefreshCw className="delivery-loading-icon" size={28} />
+              <RefreshCw
+                className="delivery-loading-icon"
+                size={28}
+              />
               <p>Loading delivery history...</p>
             </div>
 
@@ -255,7 +253,9 @@ function DeliveryHistory() {
           ) : filteredDeliveries.length === 0 ? (
             <div className="delivery-history-message">
               <Package size={36} />
+
               <h3>No deliveries found</h3>
+
               <p>
                 Your delivery records will appear here once available.
               </p>
@@ -264,13 +264,13 @@ function DeliveryHistory() {
           ) : (
             <div className="delivery-history-list">
 
-              {filteredDeliveries.map((delivery, index) => {
+              {filteredDeliveries.map((delivery) => {
                 const status = getStatus(delivery);
 
                 return (
                   <div
                     className="delivery-history-item"
-                    key={delivery.id || delivery._id || index}
+                    key={delivery.id}
                   >
 
                     <div className="delivery-item-icon">
@@ -280,29 +280,27 @@ function DeliveryHistory() {
                     <div className="delivery-item-details">
 
                       <h3>
-                        {delivery.courier || "Unknown Courier"}
+                        {delivery.courier_type || "Unknown Courier"}
                       </h3>
 
                       <p>
-                        Tracking Number:{" "}
-                        {delivery.trackingNumber ||
-                          delivery.tracking_number ||
-                          delivery.trackingId ||
-                          "Unavailable"}
+                        Parcel ID: {delivery.parcel_id || "Unavailable"}
                       </p>
 
                       <span>
                         {formatDate(
-                          delivery.deliveredAt ||
-                          delivery.delivered_at ||
-                          delivery.createdAt ||
                           delivery.created_at
                         )}
                       </span>
 
                     </div>
 
-                    <div className={`delivery-status ${status.replaceAll(" ", "-")}`}>
+                    <div
+                      className={`delivery-status ${status.replaceAll(
+                        "_",
+                        "-"
+                      )}`}
+                    >
                       {getStatusIcon(status)}
                       {formatStatus(status)}
                     </div>
