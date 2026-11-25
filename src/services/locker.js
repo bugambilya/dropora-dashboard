@@ -1,6 +1,10 @@
 
 import { apiRequest } from "./api";
 
+// ======================================
+// PAIRED LOCKERS
+// ======================================
+
 // Get all paired lockers
 export const getPairedLockers = () => {
     return apiRequest("/locker/paired");
@@ -48,6 +52,7 @@ export const getLockerTelemetry = (
         `/telemetry/${encodeURIComponent(deviceUuid)}?offset=${offset}&limit=${limit}`
     );
 };
+
 // ======================================
 // REMOTE LOCKER CONTROL
 // ======================================
@@ -61,7 +66,15 @@ export const sendRemoteCommand = ({
         throw new Error("Locker device UUID is required.");
     }
 
-    return apiRequest("/commands", {
+    if (typeof doorLocked !== "boolean") {
+        throw new Error("Door lock state must be a boolean.");
+    }
+
+    if (typeof powerSaving !== "boolean") {
+        throw new Error("Power saving state must be a boolean.");
+    }
+
+    return apiRequest("/remote/commands", {
         method: "POST",
         body: JSON.stringify({
             device_uuid: deviceUuid,

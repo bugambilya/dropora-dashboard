@@ -1,77 +1,54 @@
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-
 import {
   Package,
   CheckCircle2,
   Clock3,
-  Search,
-  Bell,
+  XCircle,
   Lock,
   Unlock,
   ChevronRight,
   ScanLine,
   Moon,
   Sun,
-  X,
   LoaderCircle,
   BatteryCharging,
 } from "lucide-react";
 
 import { sendRemoteCommand } from "../services/locker";
+import { getDeliveries } from "../services/deliveryService";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 function Dashboard({ darkMode, setDarkMode }) {
   const navigate = useNavigate();
 
-  const [trackingNumber, setTrackingNumber] = useState("");
-
-  const [showNotifications, setShowNotifications] = useState(false);
-
-  // NOTIFICATIONS
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Parcel Ready for Pickup",
-      message:
-        "Your Apple Store parcel (DRO-4821) is ready for collection.",
-      time: "2 mins ago",
-      read: false,
-    },
-    {
-      id: 2,
-      title: "Locker Connected",
-      message:
-        "Your Dropora locker is back online and connected.",
-      time: "1 hour ago",
-      read: false,
-    },
-  ]);
-
+  // ======================================
   // PAIRED LOCKERS
+  // ======================================
+
   const [lockers, setLockers] = useState([]);
   const [lockersLoading, setLockersLoading] = useState(true);
   const [lockersError, setLockersError] = useState("");
 
+  // ======================================
   // TELEMETRY
+  // ======================================
+
   const [telemetry, setTelemetry] = useState([]);
   const [telemetryLoading, setTelemetryLoading] = useState(false);
   const [telemetryError, setTelemetryError] = useState("");
 
+  // ======================================
   // REMOTE CONTROL
+  // ======================================
+
   const [isControlling, setIsControlling] = useState(false);
   const [isChangingPower, setIsChangingPower] = useState(false);
 
   const [controlError, setControlError] = useState("");
   const [controlMessage, setControlMessage] = useState("");
-
-  const notificationRef = useRef(null);
-
-  const unreadCount = notifications.filter(
-    (n) => !n.read
-  ).length;
 
   // ======================================
   // FETCH PAIRED LOCKERS
@@ -252,9 +229,9 @@ function Dashboard({ darkMode, setDarkMode }) {
       });
 
       setControlMessage(
-        data.message || "Door lock command submitted successfully."
+        data.message ||
+          "Door lock command submitted successfully."
       );
-
     } catch (error) {
       console.error("Remote door control error:", error);
 
@@ -295,9 +272,9 @@ function Dashboard({ darkMode, setDarkMode }) {
       });
 
       setControlMessage(
-        data.message || "Power mode command submitted successfully."
+        data.message ||
+          "Power mode command submitted successfully."
       );
-
     } catch (error) {
       console.error("Remote power mode error:", error);
 
@@ -310,96 +287,122 @@ function Dashboard({ darkMode, setDarkMode }) {
   };
 
   // ======================================
-  // CLOSE NOTIFICATION WHEN CLICKING OUTSIDE
+  // PARCEL HISTORY - BACKEND CONNECTION
   // ======================================
 
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (
-        notificationRef.current &&
-        !notificationRef.current.contains(e.target)
-      ) {
-        setShowNotifications(false);
-      }
-    }
+  const [parcelHistory, setParcelHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
 
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside
-    );
+  const fetchParcelHistory = useCallback(async () => {
+    try {
+      setHistoryLoading(true);
+      setHistoryError("");
 
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
+      const data = await getDeliveries();
+
+      const deliveries = Array.isArray(data.deliveries)
+        ? data.deliveries
+        : [];
+
+      // Sort newest deliveries first
+      const sortedDeliveries = [...deliveries].sort(
+        (a, b) => {
+          const dateA = new Date(
+            a.created_at || 0
+          ).getTime();
+
+          const dateB = new Date(
+            b.created_at || 0
+          ).getTime();
+
+          return dateB - dateA;
+        }
       );
-    };
+
+      // Display only the latest four deliveries
+      setParcelHistory(
+        sortedDeliveries.slice(0, 4)
+      );
+
+    } catch (error) {
+      console.error(
+        "Dashboard parcel history error:",
+        error
+      );
+
+      setHistoryError(
+        error.message || "Unable to load parcel history."
+      );
+
+      setParcelHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchParcelHistory();
+  }, [fetchParcelHistory]);
+
   // ======================================
-  // TOGGLE NOTIFICATIONS
+  // FORMAT PARCEL DATE
   // ======================================
 
-  const toggleNotifications = () => {
-    setShowNotifications((prev) => !prev);
-
-    if (!showNotifications) {
-      setNotifications((prev) =>
-        prev.map((n) => ({
-          ...n,
-          read: true,
-        }))
-      );
+  const formatParcelDate = (date) => {
+    if (!date) {
+      return "Date unavailable";
     }
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Date unavailable";
+    }
+
+    return parsedDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   // ======================================
-  // PARCEL DATA
+  // FORMAT PARCEL STATUS
   // ======================================
 
-  const parcelHistory = [
-    {
-      id: "DRO-4821",
-      sender: "Apple Store",
-      date: "Sept 22, 2026",
-      status: "Ready for Collection",
-      statusType: "ready",
-    },
-    {
-      id: "DRO-3917",
-      sender: "Shopee",
-      date: "Sept 15, 2026",
-      status: "Collected",
-      statusType: "collected",
-    },
-    {
-      id: "DRO-2841",
-      sender: "Lazada",
-      date: "Sept 8, 2026",
-      status: "Collected",
-      statusType: "collected",
-    },
-    {
-      id: "DRO-1732",
-      sender: "Amazon",
-      date: "Aug 29, 2026",
-      status: "Collected",
-      statusType: "collected",
-    },
-  ];
+  const getParcelStatus = (parcel) => {
+    const status = String(
+      parcel.status || "to_receive"
+    ).toLowerCase();
 
-  // ======================================
-  // TRACK PARCEL
-  // ======================================
+    const statusConfig = {
+      to_receive: {
+        label: "Ready for Collection",
+        type: "ready",
+      },
 
-  const handleTrack = (e) => {
-    e.preventDefault();
+      received: {
+        label: "Collected",
+        type: "collected",
+      },
 
-    if (!trackingNumber.trim()) {
-      return;
-    }
+      cancelled: {
+        label: "Cancelled",
+        type: "cancelled",
+      },
+    };
 
-    alert(`Tracking parcel: ${trackingNumber}`);
+    return (
+      statusConfig[status] || {
+        label: status
+          .replaceAll("_", " ")
+          .replace(/\b\w/g, (letter) =>
+            letter.toUpperCase()
+          ),
+        type: "ready",
+      }
+    );
   };
 
   // ======================================
@@ -431,71 +434,6 @@ function Dashboard({ darkMode, setDarkMode }) {
             )}
           </button>
 
-          {/* NOTIFICATIONS */}
-          <div
-            className="notification-wrapper"
-            ref={notificationRef}
-          >
-            <button
-              className="notification-button"
-              onClick={toggleNotifications}
-              aria-label="Notifications"
-            >
-              <Bell size={19} />
-
-              {unreadCount > 0 && (
-                <span className="notification-badge">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {showNotifications && (
-              <div className="notification-panel">
-
-                <div className="notification-panel-header">
-                  <h3>Notifications</h3>
-
-                  <button
-                    className="notification-close"
-                    onClick={() =>
-                      setShowNotifications(false)
-                    }
-                    aria-label="Close notifications"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <div className="notification-panel-list">
-                  {notifications.length === 0 ? (
-                    <p className="notification-empty">
-                      No notifications yet.
-                    </p>
-                  ) : (
-                    notifications.map((note) => (
-                      <div
-                        className="notification-item"
-                        key={note.id}
-                      >
-                        <div className="notification-item-icon">
-                          <Package size={16} />
-                        </div>
-
-                        <div className="notification-item-content">
-                          <h4>{note.title}</h4>
-                          <p>{note.message}</p>
-                          <span>{note.time}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-              </div>
-            )}
-          </div>
-
         </div>
       </header>
 
@@ -515,54 +453,6 @@ function Dashboard({ darkMode, setDarkMode }) {
               Manage your parcels and smart lockers in one place.
             </p>
           </div>
-        </section>
-
-        {/* TRACK PARCEL */}
-        <section className="track-search-card">
-
-          <div className="track-search-content">
-
-            <div className="section-icon">
-              <Search size={22} />
-            </div>
-
-            <div>
-              <h2>Track Your Parcel</h2>
-
-              <p>
-                Enter your Dropora tracking number to check your parcel status.
-              </p>
-            </div>
-
-          </div>
-
-          <form
-            onSubmit={handleTrack}
-            className="track-search-form"
-          >
-
-            <div className="tracking-input-wrapper">
-              <Search size={18} />
-
-              <input
-                type="text"
-                placeholder="Enter tracking number e.g. DRO-4821"
-                value={trackingNumber}
-                onChange={(e) =>
-                  setTrackingNumber(e.target.value)
-                }
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="track-button"
-            >
-              Track Parcel
-            </button>
-
-          </form>
-
         </section>
 
         {/* MAIN GRID */}
@@ -677,7 +567,9 @@ function Dashboard({ darkMode, setDarkMode }) {
               <button
                 type="button"
                 className={`locker-button ${
-                  isPowerSaving ? "lock-button" : "unlock-button"
+                  isPowerSaving
+                    ? "lock-button"
+                    : "unlock-button"
                 }`}
                 onClick={handlePowerToggle}
                 disabled={
@@ -743,6 +635,7 @@ function Dashboard({ darkMode, setDarkMode }) {
 
                 <div>
                   <span>Door Status</span>
+
                   <strong>
                     {doorClosed === true
                       ? "Closed"
@@ -754,6 +647,7 @@ function Dashboard({ darkMode, setDarkMode }) {
 
                 <div>
                   <span>Power Mode</span>
+
                   <strong>
                     {typeof powerSaving !== "boolean"
                       ? "Unknown"
@@ -803,7 +697,10 @@ function Dashboard({ darkMode, setDarkMode }) {
 
         </div>
 
-        {/* PARCEL HISTORY */}
+        {/* ======================================
+            PARCEL HISTORY
+        ====================================== */}
+
         <section className="history-card">
 
           <div className="card-header">
@@ -826,45 +723,97 @@ function Dashboard({ darkMode, setDarkMode }) {
 
           </div>
 
+          {/* BACKEND DELIVERY RECORDS */}
           <div className="history-list">
 
-            {parcelHistory.map((parcel) => (
-              <div
-                className="history-item"
-                key={parcel.id}
-              >
+            {historyLoading ? (
 
-                <div className="history-package-icon">
-                  <Package size={20} />
-                </div>
+              <p className="history-empty">
+                Loading parcel history...
+              </p>
 
-                <div className="history-info">
-                  <h3>{parcel.sender}</h3>
+            ) : historyError ? (
 
-                  <p>
-                    {parcel.id} · {parcel.date}
-                  </p>
-                </div>
+              <div className="history-empty">
+                <p>{historyError}</p>
 
-                <div
-                  className={`history-status ${parcel.statusType}`}
+                <button
+                  type="button"
+                  onClick={fetchParcelHistory}
+                  disabled={historyLoading}
                 >
-                  {parcel.statusType === "collected" ? (
-                    <CheckCircle2 size={15} />
-                  ) : (
-                    <Clock3 size={15} />
-                  )}
-
-                  {parcel.status}
-                </div>
-
-                <ChevronRight
-                  className="history-arrow"
-                  size={18}
-                />
-
+                  Try Again
+                </button>
               </div>
-            ))}
+
+            ) : parcelHistory.length === 0 ? (
+
+              <p className="history-empty">
+                No delivery records available.
+              </p>
+
+            ) : (
+
+              parcelHistory.map((parcel) => {
+                const status = String(
+                  parcel.status || "to_receive"
+                ).toLowerCase();
+
+                const statusInfo = getParcelStatus(parcel);
+
+                return (
+                  <div
+                    className="history-item"
+                    key={parcel.id}
+                  >
+
+                    {/* PACKAGE ICON */}
+                    <div className="history-package-icon">
+                      <Package size={20} />
+                    </div>
+
+                    {/* PARCEL INFORMATION */}
+                    <div className="history-info">
+
+                      <h3>
+                        {parcel.courier_type || "Unknown Courier"}
+                      </h3>
+
+                      <p>
+                        {parcel.parcel_id || "Unavailable"}
+                        {" · "}
+                        {formatParcelDate(parcel.created_at)}
+                      </p>
+
+                    </div>
+
+                    {/* PARCEL STATUS */}
+                    <div
+                      className={`history-status ${statusInfo.type}`}
+                    >
+
+                      {status === "received" ? (
+                        <CheckCircle2 size={15} />
+                      ) : status === "cancelled" ? (
+                        <XCircle size={15} />
+                      ) : (
+                        <Clock3 size={15} />
+                      )}
+
+                      {statusInfo.label}
+
+                    </div>
+
+                    <ChevronRight
+                      className="history-arrow"
+                      size={18}
+                    />
+
+                  </div>
+                );
+              })
+
+            )}
 
           </div>
 
