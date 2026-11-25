@@ -5,15 +5,12 @@ import { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
-import VerifyEmail from "./pages/VerifyEmail";
-import ForgotPassword from "./pages/ForgotPassword";
-
 import Dashboard from "./pages/Dashboard";
 import DashboardLayout from "./pages/DashboardLayout";
-
 import PairLocker from "./pages/PairLocker";
 import LockerManagement from "./pages/LockerManagement.jsx";
 import DeliveryHistory from "./pages/DeliveryHistory";
+import LockerTelemetry from "./pages/LockerTelemetry";
 
 function App() {
   const [darkMode, setDarkMode] = useState(
@@ -68,30 +65,8 @@ function App() {
             }
           />
 
-          <Route
-            path="/verify-email"
-            element={
-              <VerifyEmail
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-              />
-            }
-          />
-
-          <Route
-            path="/forgot-password"
-            element={
-              <ForgotPassword
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-              />
-            }
-          />
-
           {/* SHARED DASHBOARD LAYOUT */}
-          <Route
-            element={<DashboardLayout />}
-          >
+          <Route element={<DashboardLayout />}>
 
             {/* DASHBOARD */}
             <Route
@@ -108,6 +83,12 @@ function App() {
             <Route
               path="/lockers"
               element={<LockerManagement />}
+            />
+
+            {/* LOCKER TELEMETRY */}
+            <Route
+              path="/locker-telemetry"
+              element={<LockerTelemetry />}
             />
 
             {/* PAIR LOCKER */}

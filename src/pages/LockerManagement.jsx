@@ -12,10 +12,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 
-import "../App.css";
-
-const API_BASE =
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import { apiRequest } from "../services/api";
 
 function LockerManagement() {
   const navigate = useNavigate();
@@ -26,6 +23,7 @@ function LockerManagement() {
   const [error, setError] = useState("");
   const [unpairingUuid, setUnpairingUuid] = useState(null);
 
+  // FETCH PAIRED LOCKERS
   const fetchLockers = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -36,39 +34,17 @@ function LockerManagement() {
 
       setError("");
 
-      const token = localStorage.getItem("access_token");
-
-      if (!token) {
-        throw new Error("You are not logged in. Please log in again.");
-      }
-
-      const response = await fetch(
-        `${API_BASE}/locker/paired`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            data.message ||
-            "Unable to retrieve paired lockers."
-        );
-      }
+      const data = await apiRequest("/locker/paired");
 
       setLockers(
         Array.isArray(data.devices) ? data.devices : []
       );
 
     } catch (err) {
-      setError(err.message || "Something went wrong.");
+      console.error("Fetch lockers error:", err);
+      setError(
+        err.message || "Unable to retrieve paired lockers."
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,6 +55,7 @@ function LockerManagement() {
     fetchLockers();
   }, [fetchLockers]);
 
+  // UNPAIR LOCKER
   const handleUnpair = async (deviceUuid) => {
     const confirmed = window.confirm(
       "Are you sure you want to unpair this locker?"
@@ -90,30 +67,12 @@ function LockerManagement() {
       setUnpairingUuid(deviceUuid);
       setError("");
 
-      const token = localStorage.getItem("access_token");
-
-      if (!token) {
-        throw new Error("You are not logged in. Please log in again.");
-      }
-
-      const response = await fetch(
-        `${API_BASE}/locker/unpair/${encodeURIComponent(deviceUuid)}`,
+      await apiRequest(
+        `/locker/unpair/${encodeURIComponent(deviceUuid)}`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
         }
       );
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || data.message || "Unable to unpair locker."
-        );
-      }
 
       setLockers((previous) =>
         previous.filter(
@@ -124,12 +83,14 @@ function LockerManagement() {
       window.alert("Locker successfully unpaired.");
 
     } catch (err) {
+      console.error("Unpair locker error:", err);
       setError(err.message || "Unable to unpair locker.");
     } finally {
       setUnpairingUuid(null);
     }
   };
 
+  // FORMAT DATE
   const formatDate = (date) => {
     if (!date) return "Unknown";
 
@@ -196,7 +157,7 @@ function LockerManagement() {
           </div>
         )}
 
-        {/* LOADING */}
+        {/* LOADING AND CONTENT */}
         {loading ? (
           <div className="locker-loading">
             <LoaderCircle

@@ -1,13 +1,12 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   Package,
-  Truck,
   CheckCircle2,
   Clock3,
   Search,
-  MapPin,
   Bell,
   Lock,
   Unlock,
@@ -16,20 +15,11 @@ import {
   Moon,
   Sun,
   X,
-  RefreshCw,
-  AlertCircle,
   LoaderCircle,
-  Wifi,
-  Activity,
-  Scale,
-  Radar,
-  DoorClosed,
-  DoorOpen,
   BatteryCharging,
-  Plus,
 } from "lucide-react";
 
-import "../App.css";
+import { sendRemoteCommand } from "../services/locker";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -37,22 +27,24 @@ function Dashboard({ darkMode, setDarkMode }) {
   const navigate = useNavigate();
 
   const [trackingNumber, setTrackingNumber] = useState("");
-  const [isLocked, setIsLocked] = useState(true);
 
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // NOTIFICATIONS
   const [notifications, setNotifications] = useState([
     {
       id: 1,
       title: "Parcel Ready for Pickup",
-      message: "Your Apple Store parcel (DRO-4821) is ready for collection.",
+      message:
+        "Your Apple Store parcel (DRO-4821) is ready for collection.",
       time: "2 mins ago",
       read: false,
     },
     {
       id: 2,
       title: "Locker Connected",
-      message: "Your Dropora locker is back online and connected.",
+      message:
+        "Your Dropora locker is back online and connected.",
       time: "1 hour ago",
       read: false,
     },
@@ -68,14 +60,24 @@ function Dashboard({ darkMode, setDarkMode }) {
   const [telemetryLoading, setTelemetryLoading] = useState(false);
   const [telemetryError, setTelemetryError] = useState("");
 
+  // REMOTE CONTROL
+  const [isControlling, setIsControlling] = useState(false);
+  const [isChangingPower, setIsChangingPower] = useState(false);
+
+  const [controlError, setControlError] = useState("");
+  const [controlMessage, setControlMessage] = useState("");
+
   const notificationRef = useRef(null);
 
   const unreadCount = notifications.filter(
     (n) => !n.read
   ).length;
 
+  // ======================================
   // FETCH PAIRED LOCKERS
-  const fetchLockers = async () => {
+  // ======================================
+
+  const fetchLockers = useCallback(async () => {
     try {
       setLockersLoading(true);
       setLockersError("");
@@ -89,7 +91,7 @@ function Dashboard({ darkMode, setDarkMode }) {
       }
 
       const response = await fetch(
-        `${API_BASE}/api/lockers/paired`,
+        `${API_BASE}/api/locker/paired`,
         {
           method: "GET",
           headers: {
@@ -111,22 +113,27 @@ function Dashboard({ darkMode, setDarkMode }) {
         Array.isArray(data.devices) ? data.devices : []
       );
     } catch (error) {
+      console.error("Fetch lockers error:", error);
+
       setLockersError(
         error.message || "Unable to load lockers."
       );
     } finally {
       setLockersLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLockers();
-  }, []);
+  }, [fetchLockers]);
 
-  // GET FIRST PAIRED LOCKER UUID
+  // FIRST PAIRED LOCKER
   const deviceUuid = lockers[0]?.device_uuid;
 
+  // ======================================
   // FETCH TELEMETRY
+  // ======================================
+
   const fetchTelemetry = useCallback(async () => {
     if (!deviceUuid) {
       setTelemetry([]);
@@ -140,7 +147,9 @@ function Dashboard({ darkMode, setDarkMode }) {
       const token = localStorage.getItem("accessToken");
 
       if (!token) {
-        throw new Error("Please log in to view telemetry.");
+        throw new Error(
+          "Please log in to view telemetry."
+        );
       }
 
       const response = await fetch(
@@ -170,6 +179,8 @@ function Dashboard({ darkMode, setDarkMode }) {
           : []
       );
     } catch (error) {
+      console.error("Fetch telemetry error:", error);
+
       setTelemetryError(
         error.message || "Unable to load telemetry."
       );
@@ -178,7 +189,7 @@ function Dashboard({ darkMode, setDarkMode }) {
     }
   }, [deviceUuid]);
 
-  // AUTOMATIC TELEMETRY REFRESH EVERY 5 SECONDS
+  // REFRESH TELEMETRY EVERY 5 SECONDS
   useEffect(() => {
     if (!deviceUuid) {
       setTelemetry([]);
@@ -194,28 +205,114 @@ function Dashboard({ darkMode, setDarkMode }) {
     return () => clearInterval(interval);
   }, [deviceUuid, fetchTelemetry]);
 
-  // LATEST TELEMETRY DATA
+  // ======================================
+  // LATEST TELEMETRY
+  // ======================================
+
   const latestTelemetry = telemetry[0];
   const payload = latestTelemetry?.payload || {};
 
-  // ULTRASONIC DISTANCE
-  const distance =
-    payload.ultrasonic_distance_cm ??
-    payload.distance_cm ??
-    payload.proximity_distance_cm ??
-    payload.proximity_cm ??
-    payload.object_distance_cm ??
-    payload.distance ??
-    null;
-
-  // TELEMETRY VALUES
   const weight = payload.object_weight_g;
   const fillPercent = payload.box_fill_percent;
+
   const solenoidLocked = payload.solenoid_locked;
   const doorClosed = payload.door_closed;
   const powerSaving = payload.power_saving;
 
-  // CLOSE NOTIFICATION DROPDOWN WHEN CLICKING OUTSIDE
+  // ACTUAL STATES FROM TELEMETRY
+  const isLocked = solenoidLocked === true;
+  const isPowerSaving = powerSaving === true;
+
+  // ======================================
+  // REMOTE DOOR LOCK CONTROL
+  // ======================================
+
+  const handleLockToggle = async () => {
+    if (!deviceUuid) {
+      setControlError("Please pair a locker first.");
+      return;
+    }
+
+    if (typeof solenoidLocked !== "boolean") {
+      setControlError(
+        "Waiting for valid locker lock telemetry."
+      );
+      return;
+    }
+
+    try {
+      setIsControlling(true);
+      setControlError("");
+      setControlMessage("");
+
+      const data = await sendRemoteCommand({
+        deviceUuid,
+        doorLocked: !isLocked,
+        powerSaving: isPowerSaving,
+      });
+
+      setControlMessage(
+        data.message || "Door lock command submitted successfully."
+      );
+
+    } catch (error) {
+      console.error("Remote door control error:", error);
+
+      setControlError(
+        error.message || "Unable to send door lock command."
+      );
+    } finally {
+      setIsControlling(false);
+    }
+  };
+
+  // ======================================
+  // REMOTE POWER SAVING CONTROL
+  // ======================================
+
+  const handlePowerToggle = async () => {
+    if (!deviceUuid) {
+      setControlError("Please pair a locker first.");
+      return;
+    }
+
+    if (typeof powerSaving !== "boolean") {
+      setControlError(
+        "Waiting for valid power mode telemetry."
+      );
+      return;
+    }
+
+    try {
+      setIsChangingPower(true);
+      setControlError("");
+      setControlMessage("");
+
+      const data = await sendRemoteCommand({
+        deviceUuid,
+        doorLocked: isLocked,
+        powerSaving: !isPowerSaving,
+      });
+
+      setControlMessage(
+        data.message || "Power mode command submitted successfully."
+      );
+
+    } catch (error) {
+      console.error("Remote power mode error:", error);
+
+      setControlError(
+        error.message || "Unable to change power mode."
+      );
+    } finally {
+      setIsChangingPower(false);
+    }
+  };
+
+  // ======================================
+  // CLOSE NOTIFICATION WHEN CLICKING OUTSIDE
+  // ======================================
+
   useEffect(() => {
     function handleClickOutside(e) {
       if (
@@ -231,14 +328,18 @@ function Dashboard({ darkMode, setDarkMode }) {
       handleClickOutside
     );
 
-    return () =>
+    return () => {
       document.removeEventListener(
         "mousedown",
         handleClickOutside
       );
+    };
   }, []);
 
+  // ======================================
   // TOGGLE NOTIFICATIONS
+  // ======================================
+
   const toggleNotifications = () => {
     setShowNotifications((prev) => !prev);
 
@@ -252,53 +353,9 @@ function Dashboard({ darkMode, setDarkMode }) {
     }
   };
 
-  // SAMPLE PARCEL DATA
-  const currentParcel = {
-    tracking: "DRO-4821",
-    sender: "Apple Store",
-    status: "Arrived at Dropora Locker",
-    time: "Today, 2:34 PM",
-  };
-
-  const trackingSteps = [
-    {
-      title: "Order Confirmed",
-      description: "Your order has been confirmed.",
-      date: "Sept 20, 9:30 AM",
-      completed: true,
-    },
-    {
-      title: "Package Picked Up",
-      description: "Package was collected from the sender.",
-      date: "Sept 20, 2:15 PM",
-      completed: true,
-    },
-    {
-      title: "Distribution Center",
-      description: "Package arrived at the distribution center.",
-      date: "Sept 21, 8:42 AM",
-      completed: true,
-    },
-    {
-      title: "Out for Delivery",
-      description: "Package is on its way to your Dropora locker.",
-      date: "Sept 22, 10:10 AM",
-      completed: true,
-    },
-    {
-      title: "Arrived at Dropora Locker",
-      description: "Package is waiting inside your locker.",
-      date: "Sept 22, 2:34 PM",
-      completed: true,
-      current: true,
-    },
-    {
-      title: "Collected",
-      description: "Waiting for you to collect the package.",
-      date: "Pending",
-      completed: false,
-    },
-  ];
+  // ======================================
+  // PARCEL DATA
+  // ======================================
 
   const parcelHistory = [
     {
@@ -331,7 +388,10 @@ function Dashboard({ darkMode, setDarkMode }) {
     },
   ];
 
+  // ======================================
   // TRACK PARCEL
+  // ======================================
+
   const handleTrack = (e) => {
     e.preventDefault();
 
@@ -341,6 +401,10 @@ function Dashboard({ darkMode, setDarkMode }) {
 
     alert(`Tracking parcel: ${trackingNumber}`);
   };
+
+  // ======================================
+  // DASHBOARD UI
+  // ======================================
 
   return (
     <div className="dashboard-page">
@@ -453,493 +517,6 @@ function Dashboard({ darkMode, setDarkMode }) {
           </div>
         </section>
 
-        {/* STAT CARDS */}
-        <section className="stat-cards">
-
-          <div className="stat-card">
-            <div className="stat-card-icon">
-              <Package size={24} />
-            </div>
-
-            <div className="stat-card-content">
-              <span>Total Parcels</span>
-              <strong>4</strong>
-              <small>Received</small>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-card-icon">
-              <Truck size={24} />
-            </div>
-
-            <div className="stat-card-content">
-              <span>In Transit</span>
-              <strong>0</strong>
-              <small>On the way</small>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-card-icon">
-              <Clock3 size={24} />
-            </div>
-
-            <div className="stat-card-content">
-              <span>Ready</span>
-              <strong>1</strong>
-              <small>Waiting for collection</small>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-card-icon">
-              <CheckCircle2 size={24} />
-            </div>
-
-            <div className="stat-card-content">
-              <span>Collected</span>
-              <strong>3</strong>
-              <small>Successfully received</small>
-            </div>
-          </div>
-
-        </section>
-
-        {/* MY LOCKERS SECTION */}
-        <section className="dashboard-lockers-section">
-
-          <div className="dashboard-section-heading">
-            <div>
-              <p className="card-eyebrow">
-                DEVICE MANAGEMENT
-              </p>
-
-              <h2>My Lockers</h2>
-
-              <p>
-                View and manage your paired DROPORA devices.
-              </p>
-            </div>
-
-            <button
-              className="locker-manage-all-button"
-              onClick={() => navigate("/lockers")}
-            >
-              Manage All
-              <ChevronRight size={17} />
-            </button>
-          </div>
-
-          {lockersLoading ? (
-            <div className="dashboard-locker-message">
-              <LoaderCircle
-                className="dashboard-spin"
-                size={22}
-              />
-              Loading your lockers...
-            </div>
-          ) : lockersError ? (
-            <div className="dashboard-locker-message dashboard-locker-error">
-              <AlertCircle size={20} />
-
-              <span>{lockersError}</span>
-
-              <button onClick={fetchLockers}>
-                Retry
-              </button>
-            </div>
-          ) : lockers.length === 0 ? (
-            <div className="dashboard-no-lockers">
-
-              <div className="dashboard-no-lockers-icon">
-                <Lock size={27} />
-              </div>
-
-              <div>
-                <h3>No paired lockers yet</h3>
-                <p>
-                  Pair your DROPORA device to manage it here.
-                </p>
-              </div>
-
-              <button
-                className="dashboard-pair-button"
-                onClick={() => navigate("/pair-locker")}
-              >
-                <Plus size={17} />
-                Pair Locker
-              </button>
-
-            </div>
-          ) : (
-            <div className="dashboard-locker-list">
-
-              {lockers.map((locker) => (
-                <div
-                  className="dashboard-locker-item"
-                  key={locker.id}
-                >
-
-                  <div className="dashboard-locker-icon">
-                    <Lock size={24} />
-                  </div>
-
-                  <div className="dashboard-locker-info">
-                    <h3>DROPORA Smart Locker</h3>
-
-                    <p>
-                      Device ID: {locker.device_uuid}
-                    </p>
-
-                    <small>
-                      Paired:{" "}
-                      {locker.paired_at
-                        ? new Date(
-                            locker.paired_at
-                          ).toLocaleString()
-                        : "Unknown"}
-                    </small>
-                  </div>
-
-                  <div className="dashboard-locker-status">
-                    <span>
-                      <Wifi size={14} />
-                      Paired
-                    </span>
-                  </div>
-
-                </div>
-              ))}
-
-            </div>
-          )}
-
-          <button
-            className="dashboard-locker-refresh"
-            onClick={fetchLockers}
-            disabled={lockersLoading}
-          >
-            <RefreshCw size={15} />
-            Refresh locker list
-          </button>
-
-        </section>
-
-        {/* TELEMETRY MONITORING */}
-        <section className="dashboard-telemetry-section">
-
-          <div className="dashboard-section-heading">
-
-            <div>
-              <p className="card-eyebrow">
-                IOT MONITORING
-              </p>
-
-              <h2>Locker Telemetry</h2>
-
-              <p>
-                Real-time sensor readings from your DROPORA device.
-              </p>
-            </div>
-
-            <button
-              className="locker-manage-all-button"
-              onClick={fetchTelemetry}
-              disabled={telemetryLoading || !deviceUuid}
-            >
-              <RefreshCw
-                size={16}
-                className={
-                  telemetryLoading
-                    ? "dashboard-spin"
-                    : ""
-                }
-              />
-              Refresh
-            </button>
-
-          </div>
-
-          {!deviceUuid ? (
-            <div className="dashboard-telemetry-message">
-              <Lock size={22} />
-
-              <div>
-                <h3>No locker connected</h3>
-                <p>
-                  Pair a DROPORA locker to view its sensor readings.
-                </p>
-              </div>
-            </div>
-          ) : telemetryLoading && telemetry.length === 0 ? (
-            <div className="dashboard-telemetry-message">
-              <LoaderCircle
-                size={22}
-                className="dashboard-spin"
-              />
-              <span>Loading telemetry data...</span>
-            </div>
-          ) : telemetryError ? (
-            <div className="dashboard-telemetry-message dashboard-telemetry-error">
-              <AlertCircle size={20} />
-
-              <span>{telemetryError}</span>
-
-              <button onClick={fetchTelemetry}>
-                Retry
-              </button>
-            </div>
-          ) : telemetry.length === 0 ? (
-            <div className="dashboard-telemetry-message">
-              <Activity size={22} />
-
-              <div>
-                <h3>No telemetry data available</h3>
-                <p>
-                  Waiting for your device to send sensor readings.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* SENSOR CARDS */}
-              <div className="dashboard-telemetry-grid">
-
-                {/* WEIGHT SENSOR */}
-                <div className="dashboard-telemetry-card">
-
-                  <div className="dashboard-telemetry-card-header">
-                    <div className="dashboard-telemetry-icon">
-                      <Scale size={22} />
-                    </div>
-
-                    <span className="dashboard-telemetry-label">
-                      WEIGHT SENSOR
-                    </span>
-                  </div>
-
-                  <div className="dashboard-telemetry-value">
-                    {weight !== undefined && weight !== null
-                      ? Number(weight).toLocaleString()
-                      : "--"}
-                    <span>g</span>
-                  </div>
-
-                  <p className="dashboard-telemetry-description">
-                    Object weight detected
-                  </p>
-
-                </div>
-
-                {/* ULTRASONIC SENSOR */}
-                <div className="dashboard-telemetry-card">
-
-                  <div className="dashboard-telemetry-card-header">
-                    <div className="dashboard-telemetry-icon">
-                      <Radar size={22} />
-                    </div>
-
-                    <span className="dashboard-telemetry-label">
-                      ULTRASONIC SENSOR
-                    </span>
-                  </div>
-
-                  <div className="dashboard-telemetry-value">
-                    {distance !== undefined && distance !== null
-                      ? Number(distance).toFixed(2)
-                      : "--"}
-                    <span>cm</span>
-                  </div>
-
-                  <p className="dashboard-telemetry-description">
-                    Distance measurement
-                  </p>
-
-                </div>
-
-                {/* SOLENOID LOCK */}
-                <div className="dashboard-telemetry-card">
-
-                  <div className="dashboard-telemetry-card-header">
-                    <div className="dashboard-telemetry-icon">
-                      {solenoidLocked === true ? (
-                        <Lock size={22} />
-                      ) : solenoidLocked === false ? (
-                        <Unlock size={22} />
-                      ) : (
-                        <Lock size={22} />
-                      )}
-                    </div>
-
-                    <span className="dashboard-telemetry-label">
-                      SOLENOID LOCK
-                    </span>
-                  </div>
-
-                  <div className="dashboard-telemetry-status-value">
-                    {solenoidLocked === true
-                      ? "Locked"
-                      : solenoidLocked === false
-                      ? "Unlocked"
-                      : "Unknown"}
-                  </div>
-
-                  <p className="dashboard-telemetry-description">
-                    Lock mechanism status
-                  </p>
-
-                </div>
-
-                {/* REED SWITCH */}
-                <div className="dashboard-telemetry-card">
-
-                  <div className="dashboard-telemetry-card-header">
-                    <div className="dashboard-telemetry-icon">
-                      {doorClosed === true ? (
-                        <DoorClosed size={22} />
-                      ) : doorClosed === false ? (
-                        <DoorOpen size={22} />
-                      ) : (
-                        <DoorClosed size={22} />
-                      )}
-                    </div>
-
-                    <span className="dashboard-telemetry-label">
-                      REED SWITCH
-                    </span>
-                  </div>
-
-                  <div className="dashboard-telemetry-status-value">
-                    {doorClosed === true
-                      ? "Closed"
-                      : doorClosed === false
-                      ? "Open"
-                      : "Unknown"}
-                  </div>
-
-                  <p className="dashboard-telemetry-description">
-                    Compartment door status
-                  </p>
-
-                </div>
-
-              </div>
-
-              {/* TELEMETRY OVERVIEW */}
-              <div className="dashboard-telemetry-overview">
-
-                {/* BOX FILL LEVEL */}
-                <div className="dashboard-telemetry-overview-card">
-
-                  <div className="dashboard-telemetry-overview-header">
-                    <div>
-                      <h3>Locker Fill Level</h3>
-                      <p>Estimated compartment occupancy</p>
-                    </div>
-
-                    <Activity size={20} />
-                  </div>
-
-                  <div className="dashboard-fill-value">
-                    {fillPercent !== undefined && fillPercent !== null
-                      ? `${fillPercent}%`
-                      : "--"}
-                  </div>
-
-                  <div className="dashboard-fill-bar">
-                    <div
-                      className="dashboard-fill-progress"
-                      style={{
-                        width: `${
-                          fillPercent !== undefined &&
-                          fillPercent !== null
-                            ? Math.min(
-                                Math.max(Number(fillPercent), 0),
-                                100
-                              )
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-
-                </div>
-
-                {/* POWER SAVING */}
-                <div className="dashboard-telemetry-overview-card">
-
-                  <div className="dashboard-telemetry-overview-header">
-                    <div>
-                      <h3>Power Saving</h3>
-                      <p>Device energy mode</p>
-                    </div>
-
-                    <BatteryCharging size={20} />
-                  </div>
-
-                  <div className="dashboard-telemetry-status-value">
-                    {powerSaving === true
-                      ? "Enabled"
-                      : powerSaving === false
-                      ? "Disabled"
-                      : "Unknown"}
-                  </div>
-
-                  <div
-                    className={`dashboard-telemetry-status-pill ${
-                      powerSaving === true
-                        ? "active"
-                        : powerSaving === false
-                        ? "inactive"
-                        : ""
-                    }`}
-                  >
-                    {powerSaving === true
-                      ? "Energy-saving mode active"
-                      : powerSaving === false
-                      ? "Normal operating mode"
-                      : "No status available"}
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* LAST UPDATE */}
-              <div className="dashboard-telemetry-last-update">
-
-                <Clock3 size={16} />
-
-                <span>
-                  Last updated:{" "}
-                  {latestTelemetry?.recorded_at
-                    ? new Date(
-                        latestTelemetry.recorded_at
-                      ).toLocaleString()
-                    : latestTelemetry?.created_at
-                    ? new Date(
-                        latestTelemetry.created_at
-                      ).toLocaleString()
-                    : latestTelemetry?.received_at
-                    ? new Date(
-                        latestTelemetry.received_at
-                      ).toLocaleString()
-                    : "Unknown"}
-                </span>
-
-                <span className="dashboard-telemetry-auto-refresh">
-                  <span className="online-dot"></span>
-                  Auto-refreshing every 5 seconds
-                </span>
-
-              </div>
-
-            </>
-          )}
-
-        </section>
-
         {/* TRACK PARCEL */}
         <section className="track-search-card">
 
@@ -991,96 +568,10 @@ function Dashboard({ darkMode, setDarkMode }) {
         {/* MAIN GRID */}
         <div className="dashboard-grid">
 
-          {/* CURRENT PARCEL */}
-          <section className="tracking-card">
-
-            <div className="card-header">
-
-              <div>
-                <p className="card-eyebrow">
-                  CURRENT PARCEL
-                </p>
-
-                <h2>Where is my parcel?</h2>
-              </div>
-
-              <div className="tracking-icon">
-                <Truck size={21} />
-              </div>
-
-            </div>
-
-            <div className="parcel-summary">
-
-              <div className="parcel-icon">
-                <Package size={27} />
-              </div>
-
-              <div className="parcel-info">
-                <h3>{currentParcel.sender}</h3>
-
-                <p>
-                  Tracking: {currentParcel.tracking}
-                </p>
-              </div>
-
-              <span className="parcel-status ready">
-                Ready
-              </span>
-
-            </div>
-
-            {/* TIMELINE */}
-            <div className="tracking-timeline">
-
-              {trackingSteps.map((step, index) => (
-                <div
-                  className={`tracking-step ${
-                    step.completed ? "completed" : ""
-                  } ${step.current ? "current" : ""}`}
-                  key={step.title}
-                >
-
-                  <div className="timeline-marker">
-                    {step.completed ? (
-                      <CheckCircle2 size={18} />
-                    ) : (
-                      <div className="empty-marker"></div>
-                    )}
-                  </div>
-
-                  {index < trackingSteps.length - 1 && (
-                    <div className="timeline-line"></div>
-                  )}
-
-                  <div className="timeline-content">
-
-                    <div className="timeline-title-row">
-                      <h4>{step.title}</h4>
-                      <span>{step.date}</span>
-                    </div>
-
-                    <p>{step.description}</p>
-
-                    {step.current && (
-                      <div className="current-location">
-                        <MapPin size={14} />
-                        Dropora Locker · Main Compartment
-                      </div>
-                    )}
-
-                  </div>
-
-                </div>
-              ))}
-
-            </div>
-
-          </section>
-
           {/* LOCKER CARD */}
           <section className="locker-card">
 
+            {/* CARD HEADER */}
             <div className="card-header">
 
               <div>
@@ -1093,11 +584,17 @@ function Dashboard({ darkMode, setDarkMode }) {
 
               <div className="locker-online">
                 <span></span>
-                Connected
+
+                {lockersLoading
+                  ? "Loading..."
+                  : deviceUuid
+                  ? "Paired"
+                  : "Not Paired"}
               </div>
 
             </div>
 
+            {/* LOCKER STATUS */}
             <div className="locker-visual">
 
               <div className="locker-icon">
@@ -1109,24 +606,43 @@ function Dashboard({ darkMode, setDarkMode }) {
               </div>
 
               <h3>
-                {isLocked ? "Locker Locked" : "Locker Open"}
+                {typeof solenoidLocked !== "boolean"
+                  ? "Waiting for Telemetry"
+                  : isLocked
+                  ? "Locker Locked"
+                  : "Locker Unlocked"}
               </h3>
 
               <p>
-                {isLocked
-                  ? "Your parcel is safely secured."
-                  : "The compartment is currently unlocked."}
+                {doorClosed === true
+                  ? "The compartment door is closed."
+                  : doorClosed === false
+                  ? "The compartment door is open."
+                  : "Waiting for door status."}
               </p>
 
             </div>
 
+            {/* REMOTE DOOR LOCK BUTTON */}
             <button
+              type="button"
               className={`locker-button ${
                 isLocked ? "unlock-button" : "lock-button"
               }`}
-              onClick={() => setIsLocked(!isLocked)}
+              onClick={handleLockToggle}
+              disabled={
+                !deviceUuid ||
+                isControlling ||
+                isChangingPower ||
+                typeof solenoidLocked !== "boolean"
+              }
             >
-              {isLocked ? (
+              {isControlling ? (
+                <>
+                  <LoaderCircle size={18} className="spin" />
+                  Sending Command...
+                </>
+              ) : isLocked ? (
                 <>
                   <Unlock size={18} />
                   Unlock Locker
@@ -1139,6 +655,142 @@ function Dashboard({ darkMode, setDarkMode }) {
               )}
             </button>
 
+            {/* REMOTE POWER SAVING MODE */}
+            <div className="power-mode-control">
+
+              <div>
+                <p className="card-eyebrow">
+                  POWER MANAGEMENT
+                </p>
+
+                <h3>Power Saving Mode</h3>
+
+                <p>
+                  {typeof powerSaving !== "boolean"
+                    ? "Waiting for power mode telemetry."
+                    : isPowerSaving
+                    ? "Power-saving mode is enabled."
+                    : "Power-saving mode is disabled."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className={`locker-button ${
+                  isPowerSaving ? "lock-button" : "unlock-button"
+                }`}
+                onClick={handlePowerToggle}
+                disabled={
+                  !deviceUuid ||
+                  isChangingPower ||
+                  isControlling ||
+                  typeof powerSaving !== "boolean"
+                }
+              >
+                {isChangingPower ? (
+                  <>
+                    <LoaderCircle size={18} className="spin" />
+                    Processing...
+                  </>
+                ) : isPowerSaving ? (
+                  <>
+                    <Sun size={18} />
+                    Disable Power Saving
+                  </>
+                ) : (
+                  <>
+                    <BatteryCharging size={18} />
+                    Enable Power Saving
+                  </>
+                )}
+              </button>
+
+            </div>
+
+            {/* COMMAND FEEDBACK */}
+            {controlMessage && (
+              <p className="control-success">
+                {controlMessage}
+              </p>
+            )}
+
+            {controlError && (
+              <p className="control-error">
+                {controlError}
+              </p>
+            )}
+
+            {/* LOCKER ERRORS */}
+            {lockersError && (
+              <p className="control-error">
+                {lockersError}
+              </p>
+            )}
+
+            {telemetryError && (
+              <p className="control-error">
+                {telemetryError}
+              </p>
+            )}
+
+            {/* TELEMETRY SUMMARY */}
+            {deviceUuid && (
+              <div className="locker-telemetry-summary">
+
+                <p className="card-eyebrow">
+                  LATEST TELEMETRY
+                </p>
+
+                <div>
+                  <span>Door Status</span>
+                  <strong>
+                    {doorClosed === true
+                      ? "Closed"
+                      : doorClosed === false
+                      ? "Open"
+                      : "Unknown"}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Power Mode</span>
+                  <strong>
+                    {typeof powerSaving !== "boolean"
+                      ? "Unknown"
+                      : isPowerSaving
+                      ? "Saving"
+                      : "Normal"}
+                  </strong>
+                </div>
+
+                {weight !== undefined && (
+                  <div>
+                    <span>Object Weight</span>
+                    <strong>{weight} g</strong>
+                  </div>
+                )}
+
+                {fillPercent !== undefined && (
+                  <div>
+                    <span>Box Fill Level</span>
+                    <strong>{fillPercent}%</strong>
+                  </div>
+                )}
+
+                {telemetryLoading && (
+                  <p className="telemetry-refreshing">
+                    <LoaderCircle
+                      size={14}
+                      className="spin"
+                    />
+                    Updating telemetry...
+                  </p>
+                )}
+
+              </div>
+            )}
+
+            {/* PAIR DEVICE */}
             <button
               className="scan-button"
               onClick={() => navigate("/pair-locker")}

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Package,
   Search,
@@ -10,7 +10,7 @@ import {
   History,
 } from "lucide-react";
 
-import "../App.css";
+import { getDeliveries } from "../services/deliveryService";
 
 function DeliveryHistory() {
   const [deliveries, setDeliveries] = useState([]);
@@ -19,51 +19,35 @@ function DeliveryHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const API_BASE =
-    import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
-  const fetchHistory = async () => {
+  // FETCH DELIVERY HISTORY
+  const fetchHistory = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await fetch(`${API_BASE}/delivery`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            data.error ||
-            "Unable to load delivery history."
-        );
-      }
+      const data = await getDeliveries();
 
       setDeliveries(data.deliveries || []);
-
     } catch (err) {
-      setError(err.message || "Something went wrong.");
+      console.error("Delivery history error:", err);
+
+      setError(
+        err.message || "Unable to load delivery history."
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchHistory();
-  }, []);
+  }, [fetchHistory]);
 
-  // Backend statuses:
-  // to_receive, received, cancelled
+  // GET DELIVERY STATUS
   const getStatus = (delivery) =>
     String(delivery.status || "to_receive").toLowerCase();
 
+  // SEARCH AND FILTER
   const filteredDeliveries = deliveries.filter((delivery) => {
     const tracking = String(delivery.parcel_id || "");
     const courier = String(delivery.courier_type || "");
@@ -85,6 +69,7 @@ function DeliveryHistory() {
     return matchesSearch && matchesFilter;
   });
 
+  // STATUS ICON
   const getStatusIcon = (status) => {
     switch (status) {
       case "received":
@@ -98,6 +83,7 @@ function DeliveryHistory() {
     }
   };
 
+  // FORMAT STATUS
   const formatStatus = (status) => {
     const statusLabels = {
       to_receive: "To Receive",
@@ -113,6 +99,7 @@ function DeliveryHistory() {
     );
   };
 
+  // FORMAT DATE
   const formatDate = (date) => {
     if (!date) return "Date unavailable";
 
@@ -129,6 +116,7 @@ function DeliveryHistory() {
     });
   };
 
+  // STATISTICS
   const totalDeliveries = deliveries.length;
 
   const receivedCount = deliveries.filter(
@@ -143,7 +131,7 @@ function DeliveryHistory() {
     <div className="delivery-history-page">
       <div className="delivery-history-container">
 
-        {/* Header */}
+        {/* HEADER */}
         <div className="delivery-history-header">
           <button
             className="delivery-refresh-button"
@@ -158,7 +146,7 @@ function DeliveryHistory() {
           </button>
         </div>
 
-        {/* Title */}
+        {/* TITLE */}
         <div className="delivery-history-title">
           <div className="delivery-history-title-icon">
             <History size={28} />
@@ -170,7 +158,7 @@ function DeliveryHistory() {
           </div>
         </div>
 
-        {/* Statistics */}
+        {/* STATISTICS */}
         <div className="delivery-history-stats">
 
           <div className="delivery-history-stat">
@@ -202,7 +190,7 @@ function DeliveryHistory() {
 
         </div>
 
-        {/* Search and Filter */}
+        {/* SEARCH AND FILTER */}
         <div className="delivery-history-controls">
 
           <div className="delivery-search">
@@ -228,7 +216,7 @@ function DeliveryHistory() {
 
         </div>
 
-        {/* Delivery List */}
+        {/* DELIVERY LIST */}
         <div className="delivery-history-card">
 
           {loading ? (
@@ -237,12 +225,14 @@ function DeliveryHistory() {
                 className="delivery-loading-icon"
                 size={28}
               />
+
               <p>Loading delivery history...</p>
             </div>
 
           ) : error ? (
             <div className="delivery-history-message">
               <XCircle size={30} />
+
               <p>{error}</p>
 
               <button onClick={fetchHistory}>
@@ -288,9 +278,7 @@ function DeliveryHistory() {
                       </p>
 
                       <span>
-                        {formatDate(
-                          delivery.created_at
-                        )}
+                        {formatDate(delivery.created_at)}
                       </span>
 
                     </div>

@@ -6,9 +6,9 @@ import {
   Plus,
   LogOut,
   Box,
+  Activity,
 } from "lucide-react";
 
-import "../App.css";
 
 function DashboardLayout() {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ function DashboardLayout() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("token");
+
     navigate("/login");
   };
 
@@ -44,6 +45,7 @@ function DashboardLayout() {
         {/* NAVIGATION */}
         <nav className="sidebar-navigation">
 
+          {/* DASHBOARD */}
           <NavLink
             to="/dashboard"
             end
@@ -53,6 +55,7 @@ function DashboardLayout() {
             <span>Dashboard</span>
           </NavLink>
 
+          {/* MY LOCKERS */}
           <NavLink
             to="/lockers"
             className={navClass}
@@ -61,6 +64,16 @@ function DashboardLayout() {
             <span>My Lockers</span>
           </NavLink>
 
+          {/* LOCKER TELEMETRY */}
+          <NavLink
+            to="/locker-telemetry"
+            className={navClass}
+          >
+            <Activity size={20} />
+            <span>Locker Telemetry</span>
+          </NavLink>
+
+          {/* DELIVERY HISTORY */}
           <NavLink
             to="/delivery-history"
             className={navClass}
@@ -69,6 +82,7 @@ function DashboardLayout() {
             <span>Delivery History</span>
           </NavLink>
 
+          {/* PAIR LOCKER */}
           <NavLink
             to="/pair-locker"
             className={navClass}

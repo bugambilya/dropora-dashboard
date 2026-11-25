@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   PackageCheck,
   ShieldCheck,
   CheckCircle,
@@ -11,7 +10,7 @@ import {
   Copy,
 } from "lucide-react";
 
-import "../App.css";
+import { apiRequest } from "../services/api";
 
 function PairLocker() {
   const navigate = useNavigate();
@@ -23,67 +22,58 @@ function PairLocker() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const API_BASE =
-    import.meta.env.VITE_API_URL ||
-    "http://localhost:3000/api";
-
-  // Generate a pairing code
+  // GENERATE PAIRING CODE
   const handleGenerateCode = async () => {
     setLoading(true);
     setError("");
     setSuccess(false);
     setPairCode("");
     setExpiresAt("");
+    setCopied(false);
 
     try {
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("accessToken");
 
       if (!token) {
         throw new Error("Please log in again.");
       }
 
-      const response = await fetch(
-        `${API_BASE}/locker/pairing-code`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const data = await apiRequest("/locker/pairing-code", {
+        method: "POST",
+      });
 
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-          data.error ||
-          "Unable to generate pairing code."
-        );
+      if (!data.pair_code) {
+        throw new Error("The server did not return a pairing code.");
       }
 
       setPairCode(data.pair_code);
-      setExpiresAt(data.expires_at);
+      setExpiresAt(data.expires_at || "");
       setSuccess(true);
 
     } catch (err) {
-      setError(err.message || "Something went wrong.");
+      console.error("Generate pairing code error:", err);
+
+      setError(
+        err.message || "Unable to generate pairing code."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // Copy pairing code
+  // COPY PAIRING CODE
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(pairCode);
+
       setCopied(true);
 
       setTimeout(() => {
         setCopied(false);
       }, 2000);
 
-    } catch {
+    } catch (err) {
+      console.error("Copy code error:", err);
       setError("Unable to copy pairing code.");
     }
   };
@@ -91,10 +81,9 @@ function PairLocker() {
   return (
     <div className="pair-locker-page">
       <div className="pair-locker-container">
-
         <div className="pair-locker-card">
 
-          {/* Icon */}
+          {/* ICON */}
           <div className="pair-locker-icon">
             {success ? (
               <CheckCircle size={38} />
@@ -103,7 +92,7 @@ function PairLocker() {
             )}
           </div>
 
-          {/* Pairing Code Generated */}
+          {/* SUCCESS CONTENT */}
           {success ? (
             <div className="pair-success-content">
 
@@ -156,7 +145,7 @@ function PairLocker() {
             </div>
           ) : (
 
-            /* Generate Pairing Code */
+            /* GENERATE CODE CONTENT */
             <>
               <h2>Pair Your Locker</h2>
 
@@ -166,7 +155,10 @@ function PairLocker() {
               </p>
 
               {error && (
-                <div className="pair-error-message" role="alert">
+                <div
+                  className="pair-error-message"
+                  role="alert"
+                >
                   <AlertCircle size={16} />
                   {error}
                 </div>

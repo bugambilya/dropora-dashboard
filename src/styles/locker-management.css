@@ -1,0 +1,829 @@
+/* ===================================== 
+   DROPORA - LOCKER MANAGEMENT 
+===================================== */ 
+ 
+.locker-management-page { 
+  min-height: 100vh; 
+  padding: 40px 20px; 
+  background: var(--bg); 
+  color: var(--text); 
+} 
+ 
+.locker-management-container { 
+  max-width: 1100px; 
+  width: 100%; 
+  margin: 0 auto; 
+} 
+ 
+.locker-management-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 35px; 
+  gap: 12px; 
+} 
+ 
+.locker-back-button, 
+.locker-refresh-button { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  padding: 11px 16px; 
+  border: 1px solid var(--border); 
+  border-radius: 10px; 
+
+  background: var(--card-bg); 
+  color: var(--text); 
+  font-weight: 600; 
+  cursor: pointer; 
+} 
+ 
+.locker-refresh-button:disabled { 
+  opacity: 0.6; 
+  cursor: not-allowed; 
+} 
+ 
+.locker-management-title { 
+  display: flex; 
+  align-items: center; 
+  gap: 17px; 
+  margin-bottom: 30px; 
+} 
+ 
+.locker-title-icon { 
+  width: 58px; 
+  height: 58px; 
+  display: grid; 
+  place-items: center; 
+  border-radius: 15px; 
+  background: var(--primary); 
+  color: white; 
+} 
+ 
+.locker-management-title h1 { 
+  margin: 0 0 7px; 
+  font-size: 28px; 
+  color: var(--text); 
+} 
+ 
+.locker-management-title p { 
+  margin: 0; 
+  color: var(--muted); 
+} 
+ 
+.locker-summary-card { 
+  display: flex; 
+  align-items: center; 
+  gap: 17px; 
+  padding: 22px; 
+
+  margin-bottom: 30px; 
+  background: var(--card-bg); 
+  border: 1px solid var(--border); 
+  border-radius: 15px; 
+} 
+ 
+.locker-summary-icon { 
+  width: 50px; 
+  height: 50px; 
+  display: grid; 
+  place-items: center; 
+  border-radius: 12px; 
+  background: rgba(207, 65, 151, 0.12); 
+  color: var(--primary); 
+} 
+ 
+.locker-summary-card h2 { 
+  margin: 0; 
+  font-size: 25px; 
+  color: var(--text); 
+} 
+ 
+.locker-summary-card p { 
+  margin: 4px 0 0; 
+  font-size: 13px; 
+  color: var(--muted); 
+} 
+ 
+.locker-add-button { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  margin-left: auto; 
+  padding: 12px 17px; 
+  border: none; 
+  border-radius: 9px; 
+  background: var(--primary); 
+  color: white; 
+  font-weight: 600; 
+  cursor: pointer; 
+} 
+ 
+.locker-alert { 
+  display: flex; 
+
+  align-items: center; 
+  gap: 10px; 
+  padding: 13px 16px; 
+  margin-bottom: 18px; 
+  border-radius: 10px; 
+  font-size: 14px; 
+} 
+ 
+.locker-alert span { 
+  flex: 1; 
+} 
+ 
+.locker-alert button { 
+  display: grid; 
+  place-items: center; 
+  border: none; 
+  background: transparent; 
+  color: inherit; 
+  cursor: pointer; 
+} 
+ 
+.locker-alert-error { 
+  color: #dc3545; 
+  background: rgba(220, 53, 69, 0.1); 
+} 
+ 
+.locker-alert-success { 
+  color: #16834a; 
+  background: rgba(22, 163, 74, 0.1); 
+} 
+ 
+.locker-section-heading { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 18px; 
+} 
+ 
+.locker-section-heading h2 { 
+  margin: 0; 
+  font-size: 20px; 
+  color: var(--text); 
+} 
+ 
+
+.locker-section-heading span { 
+  color: var(--muted); 
+  font-size: 13px; 
+} 
+ 
+.locker-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); 
+  gap: 20px; 
+} 
+ 
+.locker-device-card { 
+  padding: 23px; 
+  background: var(--card-bg); 
+  border: 1px solid var(--border); 
+  border-radius: 15px; 
+  transition: transform 0.2s ease, box-shadow 0.2s ease; 
+} 
+ 
+.locker-device-card:hover { 
+  transform: translateY(-3px); 
+  box-shadow: var(--shadow); 
+} 
+ 
+.locker-device-top { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 20px; 
+} 
+ 
+.locker-device-icon { 
+  width: 48px; 
+  height: 48px; 
+  display: grid; 
+  place-items: center; 
+  border-radius: 12px; 
+  color: var(--primary); 
+  background: rgba(207, 65, 151, 0.12); 
+} 
+ 
+.locker-connection { 
+  display: flex; 
+  align-items: center; 
+
+  gap: 6px; 
+  padding: 7px 10px; 
+  border-radius: 20px; 
+  font-size: 12px; 
+  font-weight: 600; 
+} 
+ 
+.locker-connection.online { 
+  color: #16834a; 
+  background: rgba(22, 163, 74, 0.12); 
+} 
+ 
+.locker-connection.offline { 
+  color: #dc3545; 
+  background: rgba(220, 53, 69, 0.1); 
+} 
+ 
+.locker-device-card h3 { 
+  margin: 0 0 7px; 
+  font-size: 18px; 
+  color: var(--text); 
+} 
+ 
+.locker-device-id { 
+  margin: 0 0 17px; 
+  font-size: 13px; 
+  color: var(--muted); 
+  overflow-wrap: anywhere; 
+} 
+ 
+.locker-device-security { 
+  display: flex; 
+  align-items: center; 
+  gap: 7px; 
+  padding: 12px 0; 
+  margin-bottom: 15px; 
+  border-top: 1px solid var(--border); 
+  border-bottom: 1px solid var(--border); 
+  color: var(--muted); 
+  font-size: 12px; 
+} 
+ 
+.locker-device-actions { 
+  display: flex; 
+
+  gap: 10px; 
+} 
+ 
+.locker-details-button { 
+  flex: 1; 
+  padding: 11px; 
+  border: 1px solid var(--border); 
+  border-radius: 9px; 
+  background: var(--card-bg); 
+  color: var(--text); 
+  font-weight: 600; 
+  cursor: pointer; 
+} 
+ 
+.locker-unpair-button { 
+  width: 100px; 
+  display: grid; 
+  place-items: center; 
+  border: 1px solid rgba(220, 53, 69, 0.25); 
+  border-radius: 9px; 
+  background: rgba(220, 53, 69, 0.08); 
+  color: #dc3545; 
+  cursor: pointer; 
+} 
+ 
+.locker-unpair-button:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+} 
+ 
+.locker-empty-state { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 12px; 
+  padding: 65px 20px; 
+  text-align: center; 
+  color: var(--muted); 
+  background: var(--card-bg); 
+  border: 1px solid var(--border); 
+  border-radius: 15px; 
+} 
+ 
+
+.locker-empty-state h3 { 
+  margin: 0; 
+  color: var(--text); 
+} 
+ 
+.locker-empty-state p { 
+  max-width: 400px; 
+  margin: 0; 
+  font-size: 14px; 
+  line-height: 1.6; 
+} 
+ 
+.locker-empty-state button { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  margin-top: 10px; 
+  padding: 12px 18px; 
+  border: none; 
+  border-radius: 9px; 
+  background: var(--primary); 
+  color: white; 
+  font-weight: 600; 
+  cursor: pointer; 
+} 
+ 
+.locker-spinning { 
+  animation: locker-spin 1s linear infinite; 
+} 
+ 
+@keyframes locker-spin { 
+  to { 
+    transform: rotate(360deg); 
+  } 
+} 
+ 
+/* Locker Details Modal */ 
+ 
+.locker-modal-overlay { 
+  position: fixed; 
+  inset: 0; 
+  z-index: 1000; 
+  display: flex; 
+  align-items: center; 
+
+  justify-content: center; 
+  padding: 20px; 
+  background: rgba(0, 0, 0, 0.55); 
+} 
+ 
+.locker-details-modal { 
+  position: relative; 
+  width: 100%; 
+  max-width: 420px; 
+  padding: 30px; 
+  border-radius: 17px; 
+  background: var(--card-bg); 
+  color: var(--text); 
+  box-shadow: var(--shadow); 
+} 
+ 
+.locker-modal-close { 
+  position: absolute; 
+  top: 16px; 
+  right: 16px; 
+  display: grid; 
+  place-items: center; 
+  padding: 6px; 
+  border: none; 
+  background: transparent; 
+  color: var(--muted); 
+  cursor: pointer; 
+} 
+ 
+.locker-modal-icon { 
+  width: 55px; 
+  height: 55px; 
+  display: grid; 
+  place-items: center; 
+  margin-bottom: 17px; 
+  border-radius: 13px; 
+  background: rgba(207, 65, 151, 0.12); 
+  color: var(--primary); 
+} 
+ 
+.locker-details-modal h2 { 
+  margin: 0 0 5px; 
+} 
+ 
+
+.locker-details-modal > p { 
+  margin: 0 0 22px; 
+  color: var(--muted); 
+  font-size: 13px; 
+} 
+ 
+.locker-detail-row { 
+  display: flex; 
+  justify-content: space-between; 
+  gap: 15px; 
+  padding: 14px 0; 
+  border-bottom: 1px solid var(--border); 
+  font-size: 13px; 
+} 
+ 
+.locker-detail-row span { 
+  color: var(--muted); 
+} 
+ 
+.locker-detail-row strong { 
+  text-align: right; 
+  overflow-wrap: anywhere; 
+} 
+ 
+.locker-modal-done { 
+  width: 100%; 
+  margin-top: 22px; 
+  padding: 12px; 
+  border: none; 
+  border-radius: 9px; 
+  background: var(--primary); 
+  color: white; 
+  font-weight: 600; 
+  cursor: pointer; 
+} 
+ 
+@media (max-width: 600px) { 
+  .locker-management-page { 
+    padding: 25px 14px; 
+  } 
+ 
+  .locker-management-title h1 { 
+    font-size: 23px; 
+  } 
+
+ 
+  .locker-summary-card { 
+    flex-wrap: wrap; 
+  } 
+ 
+  .locker-add-button { 
+    width: 100%; 
+    justify-content: center; 
+    margin-left: 0; 
+  } 
+ 
+  .locker-grid { 
+    grid-template-columns: 1fr; 
+  } 
+} 
+ 
+.dashboard-quick-actions { 
+  display: flex; 
+  justify-content: flex-end; 
+  margin-top: 16px; 
+  margin-bottom: 24px; 
+} 
+ 
+.manage-lockers-button { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 10px; 
+  padding: 13px 20px; 
+  background: var(--primary); 
+  color: white; 
+  border: none; 
+  border-radius: 10px; 
+  font-size: 14px; 
+  font-weight: 600; 
+  cursor: pointer; 
+  transition: 0.2s ease; 
+} 
+ 
+.manage-lockers-button:hover { 
+  opacity: 0.9; 
+  transform: translateY(-2px); 
+} 
+ 
+
+@media (max-width: 600px) { 
+  .dashboard-quick-actions { 
+    justify-content: stretch; 
+  } 
+ 
+  .manage-lockers-button { 
+    width: 100%; 
+  } 
+} 
+ 
+/* ================================= 
+   LOCKER MANAGEMENT PAGE 
+================================= */ 
+ 
+.locker-management-page { 
+  min-height: 100vh; 
+  padding: 40px 0 70px; 
+  background: var(--bg); 
+  color: var(--text); 
+  box-sizing: border-box; 
+} 
+ 
+.locker-management-container { 
+  width: min(1100px, 92%); 
+  margin: 0 auto; 
+} 
+ 
+.locker-management-header { 
+  margin-bottom: 30px; 
+} 
+ 
+.locker-back-button { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 9px; 
+  border: none; 
+  background: transparent; 
+  color: var(--text); 
+  font-size: 14px; 
+  font-weight: 600; 
+  cursor: pointer; 
+  margin-bottom: 25px; 
+} 
+ 
+
+.locker-header-title { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  gap: 20px; 
+  flex-wrap: wrap; 
+} 
+ 
+.locker-header-title h1 { 
+  font-size: clamp(28px, 4vw, 38px); 
+  margin: 0 0 8px; 
+  color: var(--text); 
+} 
+ 
+.locker-header-title p, 
+.locker-list-heading p { 
+  color: var(--muted); 
+  margin: 0; 
+} 
+ 
+.locker-refresh-button { 
+  display: flex; 
+  align-items: center; 
+  gap: 9px; 
+  padding: 11px 17px; 
+  border: 1px solid var(--border); 
+  border-radius: 10px; 
+  background: var(--card); 
+  color: var(--text); 
+  cursor: pointer; 
+  font-weight: 600; 
+} 
+ 
+.locker-refresh-button:disabled { 
+  opacity: 0.6; 
+  cursor: not-allowed; 
+} 
+ 
+.locker-summary-card { 
+  display: flex; 
+  align-items: center; 
+  gap: 18px; 
+  background: var(--card); 
+  border: 1px solid var(--border); 
+
+  border-radius: 16px; 
+  padding: 23px; 
+  margin-bottom: 30px; 
+  box-sizing: border-box; 
+} 
+ 
+.locker-summary-icon, 
+.locker-device-icon, 
+.locker-empty-icon { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  background: rgba(225, 75, 145, 0.12); 
+  color: var(--primary); 
+  border-radius: 13px; 
+} 
+ 
+.locker-summary-icon { 
+  width: 55px; 
+  height: 55px; 
+} 
+ 
+.locker-summary-card span { 
+  color: var(--muted); 
+  font-size: 14px; 
+} 
+ 
+.locker-summary-card h2 { 
+  margin: 4px 0 0; 
+  font-size: 28px; 
+  color: var(--text); 
+} 
+ 
+.locker-error-message { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  padding: 15px; 
+  border-radius: 10px; 
+  margin-bottom: 20px; 
+  color: #b42318; 
+  background: rgba(220, 53, 69, 0.1); 
+  overflow-wrap: anywhere; 
+} 
+
+ 
+.locker-loading { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  padding: 65px 20px; 
+  color: var(--muted); 
+  gap: 12px; 
+} 
+ 
+.locker-empty-state { 
+  text-align: center; 
+  padding: 60px 25px; 
+  background: var(--card); 
+  border: 1px solid var(--border); 
+  border-radius: 18px; 
+} 
+ 
+.locker-empty-icon { 
+  width: 75px; 
+  height: 75px; 
+  margin: 0 auto 20px; 
+} 
+ 
+.locker-empty-state h2 { 
+  color: var(--text); 
+  margin: 0 0 10px; 
+} 
+ 
+.locker-empty-state p { 
+  max-width: 470px; 
+  margin: 0 auto 25px; 
+  color: var(--muted); 
+  line-height: 1.7; 
+} 
+ 
+.locker-primary-button { 
+  display: inline-flex; 
+  justify-content: center; 
+  align-items: center; 
+  gap: 9px; 
+  padding: 12px 19px; 
+  border: none; 
+
+  border-radius: 10px; 
+  background: var(--primary); 
+  color: white; 
+  font-weight: 600; 
+  cursor: pointer; 
+  transition: 0.2s ease; 
+} 
+ 
+.locker-primary-button:hover { 
+  opacity: 0.9; 
+  transform: translateY(-1px); 
+} 
+ 
+.locker-list-heading { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  gap: 15px; 
+  flex-wrap: wrap; 
+  margin-bottom: 20px; 
+} 
+ 
+.locker-list-heading h2 { 
+  color: var(--text); 
+  margin: 0 0 7px; 
+} 
+ 
+.locker-device-list { 
+  display: grid; 
+  gap: 16px; 
+} 
+ 
+.locker-device-card { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  gap: 20px; 
+  padding: 22px; 
+  background: var(--card); 
+  border: 1px solid var(--border); 
+  border-radius: 15px; 
+  min-width: 0; 
+  box-sizing: border-box; 
+} 
+
+ 
+.locker-device-main { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  min-width: 0; 
+} 
+ 
+.locker-device-icon { 
+  width: 55px; 
+  height: 55px; 
+  flex-shrink: 0; 
+} 
+ 
+.locker-device-information { 
+  min-width: 0; 
+} 
+ 
+.locker-device-information h3 { 
+  color: var(--text); 
+  margin: 0 0 8px; 
+} 
+ 
+.locker-device-uuid { 
+  color: var(--muted); 
+  font-size: 13px; 
+  overflow-wrap: anywhere; 
+  margin: 0 0 8px; 
+} 
+ 
+.locker-paired-date { 
+  display: flex; 
+  align-items: center; 
+  flex-wrap: wrap; 
+  gap: 7px; 
+  color: var(--muted); 
+  font-size: 13px; 
+  margin: 0; 
+} 
+ 
+.locker-device-actions { 
+  display: flex; 
+  align-items: center; 
+  gap: 15px; 
+
+  flex-shrink: 0; 
+} 
+ 
+.locker-connected-status { 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  color: #15945b; 
+  font-size: 13px; 
+  font-weight: 600; 
+} 
+ 
+.locker-unpair-button { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  padding: 10px 13px; 
+  border: 1px solid rgba(220, 53, 69, 0.3); 
+  border-radius: 9px; 
+  background: rgba(220, 53, 69, 0.08); 
+  color: #dc3545; 
+  cursor: pointer; 
+  font-weight: 600; 
+} 
+ 
+.locker-unpair-button:disabled { 
+  opacity: 0.6; 
+  cursor: not-allowed; 
+} 
+ 
+.locker-spinning { 
+  animation: locker-spin 1s linear infinite; 
+} 
+ 
+@keyframes locker-spin { 
+  to { 
+    transform: rotate(360deg); 
+  } 
+} 
+ 
+@media (max-width: 650px) { 
+  .locker-management-page { 
+    padding-top: 25px; 
+  } 
+
+ 
+  .locker-device-card { 
+    align-items: flex-start; 
+    flex-direction: column; 
+  } 
+ 
+  .locker-device-actions { 
+    width: 100%; 
+    justify-content: space-between; 
+  } 
+ 
+  .locker-device-information h3 { 
+    font-size: 15px; 
+  } 
+ 
+  .locker-list-heading { 
+    align-items: flex-start; 
+  } 
+} 
+ 
+@media (max-width: 420px) { 
+  .locker-device-main { 
+    align-items: flex-start; 
+  } 
+ 
+  .locker-device-actions { 
+    align-items: flex-start; 
+    flex-direction: column; 
+  } 
+}

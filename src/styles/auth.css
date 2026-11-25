@@ -1,0 +1,593 @@
+/* ========================================================= 
+   5. AUTH PAGES 
+========================================================= */ 
+ 
+.auth-page { 
+  min-height: 100vh; 
+ 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+
+
+  position: relative; 
+ 
+  padding: 70px 20px 40px; 
+ 
+  background: var(--bg); 
+} 
+ 
+ 
+/* ========================================================= 
+   AUTH BACK BUTTON 
+========================================================= */ 
+ 
+.auth-back-button { 
+  position: absolute; 
+ 
+  top: 25px; 
+  left: 30px; 
+ 
+  min-height: 42px; 
+ 
+  padding: 0 14px; 
+ 
+  display: flex; 
+  align-items: center; 
+ 
+  gap: 6px; 
+ 
+  border: none; 
+ 
+  border-radius: 13px; 
+ 
+  background: var(--bg); 
+ 
+  color: var(--muted); 
+ 
+  box-shadow: 
+    5px 5px 10px var(--dark-shadow), 
+    -5px -5px 10px var(--light-shadow); 
+ 
+  font-size: 12px; 
+ 
+  font-weight: 600; 
+ 
+  transition: 
+
+    transform 0.2s ease, 
+    color 0.2s ease; 
+} 
+ 
+.auth-back-button:hover { 
+  transform: translateY(-2px); 
+ 
+  color: var(--primary); 
+} 
+ 
+ 
+/* ========================================================= 
+   AUTH CONTAINER 
+========================================================= */ 
+ 
+.auth-container { 
+  width: 100%; 
+ 
+  max-width: 440px; 
+} 
+ 
+.auth-logo { 
+  margin-bottom: 25px; 
+ 
+  text-align: center; 
+ 
+  font-size: 25px; 
+ 
+  font-weight: 600; 
+ 
+  letter-spacing: 0.14em; 
+ 
+  background: 
+    linear-gradient( 
+      135deg, 
+      #95369c, 
+      #cf4197, 
+      #fd598e, 
+      #fd8d71 
+    ); 
+ 
+  -webkit-background-clip: text; 
+  background-clip: text; 
+ 
+
+  -webkit-text-fill-color: transparent; 
+} 
+ 
+ 
+/* ========================================================= 
+   AUTH CARD 
+========================================================= */ 
+ 
+.auth-card { 
+  width: 100%; 
+ 
+  padding: 35px; 
+ 
+  border-radius: 28px; 
+ 
+  background: var(--bg); 
+ 
+  box-shadow: 
+    14px 14px 28px var(--dark-shadow), 
+    -14px -14px 28px var(--light-shadow); 
+ 
+  animation: 
+    authCardIn 0.35s ease; 
+} 
+ 
+@keyframes authCardIn { 
+  from { 
+    opacity: 0; 
+ 
+    transform: 
+      translateY(15px); 
+  } 
+ 
+  to { 
+    opacity: 1; 
+ 
+    transform: 
+      translateY(0); 
+  } 
+} 
+ 
+ 
+/* ========================================================= 
+   AUTH HEADER 
+
+========================================================= */ 
+ 
+.auth-header { 
+  text-align: center; 
+ 
+  margin-bottom: 28px; 
+} 
+ 
+.auth-icon { 
+  width: 62px; 
+  height: 62px; 
+ 
+  margin: 0 auto 17px; 
+ 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+ 
+  border-radius: 19px; 
+ 
+  color: #ffffff; 
+ 
+  background: var(--gradient); 
+ 
+  box-shadow: 
+    6px 6px 12px var(--dark-shadow), 
+    -6px -6px 12px var(--light-shadow); 
+} 
+ 
+.auth-header h1 { 
+  margin: 0 0 8px; 
+ 
+  font-size: 28px; 
+ 
+  font-weight: 500; 
+ 
+  color: var(--text); 
+} 
+ 
+.auth-header p { 
+  margin: 0; 
+ 
+  color: var(--muted); 
+ 
+
+  font-size: 13px; 
+ 
+  line-height: 1.6; 
+} 
+ 
+ 
+/* ========================================================= 
+   FORM 
+========================================================= */ 
+ 
+.form-group { 
+  margin-bottom: 18px; 
+} 
+ 
+.form-group label { 
+  display: block; 
+ 
+  margin-bottom: 8px; 
+ 
+  color: var(--text); 
+ 
+  font-size: 12px; 
+ 
+  font-weight: 600; 
+} 
+ 
+.form-label-row { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+ 
+  margin-bottom: 8px; 
+} 
+ 
+.form-label-row label { 
+  margin: 0; 
+} 
+ 
+.form-label-row a { 
+  color: var(--primary); 
+ 
+  font-size: 11px; 
+ 
+  font-weight: 600; 
+
+} 
+ 
+.form-label-row a:hover { 
+  text-decoration: underline; 
+} 
+ 
+ 
+/* ========================================================= 
+   INPUT 
+========================================================= */ 
+ 
+.input-wrapper { 
+  width: 100%; 
+ 
+  height: 52px; 
+ 
+  display: flex; 
+  align-items: center; 
+ 
+  gap: 10px; 
+ 
+  padding: 0 15px; 
+ 
+  border-radius: 15px; 
+ 
+  background: var(--bg); 
+ 
+  box-shadow: 
+    inset 4px 4px 8px var(--dark-shadow), 
+    inset -4px -4px 8px var(--light-shadow); 
+ 
+  transition: 
+    box-shadow 0.2s ease; 
+} 
+ 
+.input-wrapper:focus-within { 
+  box-shadow: 
+    inset 2px 2px 5px var(--dark-shadow), 
+    inset -2px -2px 5px var(--light-shadow), 
+    0 0 0 2px rgba(253, 89, 142, 0.15); 
+} 
+ 
+.input-wrapper > svg { 
+  flex-shrink: 0; 
+
+ 
+  color: var(--primary); 
+} 
+ 
+.input-wrapper input { 
+  width: 100%; 
+  height: 100%; 
+ 
+  border: none; 
+ 
+  outline: none; 
+ 
+  background: transparent; 
+ 
+  color: var(--text); 
+ 
+  font-size: 13px; 
+} 
+ 
+.input-wrapper input::placeholder { 
+  color: var(--muted); 
+} 
+ 
+ 
+/* ========================================================= 
+   PASSWORD TOGGLE 
+========================================================= */ 
+ 
+.password-toggle { 
+  width: 32px; 
+  height: 32px; 
+ 
+  flex-shrink: 0; 
+ 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+ 
+  border: none; 
+ 
+  border-radius: 50%; 
+ 
+  background: transparent; 
+ 
+
+  color: var(--muted); 
+} 
+ 
+.password-toggle:hover { 
+  color: var(--primary); 
+} 
+ 
+ 
+/* ========================================================= 
+   AUTH PRIMARY BUTTON 
+========================================================= */ 
+ 
+.auth-primary-button { 
+  width: 100%; 
+ 
+  min-height: 52px; 
+ 
+  margin-top: 7px; 
+ 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+ 
+  gap: 9px; 
+ 
+  border: none; 
+ 
+  border-radius: 15px; 
+ 
+  color: #ffffff; 
+ 
+  background: var(--gradient); 
+ 
+  box-shadow: 
+    8px 8px 16px var(--dark-shadow), 
+    -8px -8px 16px var(--light-shadow); 
+ 
+  font-size: 13px; 
+ 
+  font-weight: 700; 
+ 
+  transition: 
+    transform 0.2s ease, 
+    box-shadow 0.2s ease; 
+
+} 
+ 
+.auth-primary-button:hover { 
+  transform: translateY(-2px); 
+} 
+ 
+.auth-primary-button:active { 
+  transform: translateY(0); 
+ 
+  box-shadow: 
+    inset 4px 4px 8px rgba(0, 0, 0, 0.18), 
+    inset -4px -4px 8px rgba(255, 255, 255, 0.15); 
+} 
+ 
+ 
+/* ========================================================= 
+   AUTH DIVIDER 
+========================================================= */ 
+ 
+.auth-divider { 
+  display: flex; 
+  align-items: center; 
+ 
+  gap: 12px; 
+ 
+  margin: 25px 0; 
+ 
+  color: var(--muted); 
+} 
+ 
+.auth-divider::before, 
+.auth-divider::after { 
+  content: ""; 
+ 
+  flex: 1; 
+ 
+  height: 1px; 
+ 
+  background: var(--dark-shadow); 
+} 
+ 
+.auth-divider span { 
+  font-size: 9px; 
+ 
+
+  font-weight: 600; 
+ 
+  letter-spacing: 0.1em; 
+} 
+ 
+ 
+/* ========================================================= 
+   AUTH SWITCH 
+========================================================= */ 
+ 
+.auth-switch { 
+  margin: 20px 0 0; 
+ 
+  text-align: center; 
+ 
+  color: var(--muted); 
+ 
+  font-size: 12px; 
+} 
+ 
+.auth-switch a { 
+  color: var(--primary); 
+ 
+  font-weight: 700; 
+} 
+ 
+.auth-switch a:hover { 
+  text-decoration: underline; 
+} 
+ 
+ 
+/* ========================================================= 
+   EMAIL VERIFICATION 
+========================================================= */ 
+ 
+.verification-email { 
+  display: block; 
+ 
+  margin-top: 8px; 
+ 
+  color: var(--primary); 
+ 
+  font-size: 13px; 
+ 
+
+  font-weight: 700; 
+ 
+  word-break: break-word; 
+} 
+ 
+.verification-input { 
+  width: 100%; 
+ 
+  height: 65px; 
+ 
+  border: none; 
+ 
+  outline: none; 
+ 
+  border-radius: 16px; 
+ 
+  background: var(--bg); 
+ 
+  box-shadow: 
+    inset 5px 5px 10px var(--dark-shadow), 
+    inset -5px -5px 10px var(--light-shadow); 
+ 
+  color: var(--text); 
+ 
+  text-align: center; 
+ 
+  font-size: 26px; 
+ 
+  font-weight: 700; 
+ 
+  letter-spacing: 8px; 
+} 
+ 
+.verification-input:focus { 
+  box-shadow: 
+    inset 3px 3px 7px var(--dark-shadow), 
+    inset -3px -3px 7px var(--light-shadow), 
+    0 0 0 2px rgba(253, 89, 142, 0.15); 
+} 
+ 
+.resend-text { 
+  margin: 22px 0 6px; 
+ 
+  text-align: center; 
+
+ 
+  color: var(--muted); 
+ 
+  font-size: 12px; 
+} 
+ 
+.resend-button { 
+  display: block; 
+ 
+  margin: 0 auto; 
+ 
+  border: none; 
+ 
+  background: transparent; 
+ 
+  color: var(--primary); 
+ 
+  font-size: 12px; 
+ 
+  font-weight: 700; 
+} 
+ 
+.resend-button:hover { 
+  text-decoration: underline; 
+} 
+ 
+ 
+/* ========================================================= 
+   SUCCESS STATE 
+========================================================= */ 
+ 
+.success-state { 
+  text-align: center; 
+} 
+ 
+.success-icon { 
+  width: 72px; 
+  height: 72px; 
+ 
+  margin: 0 auto 20px; 
+ 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+
+ 
+  border-radius: 50%; 
+ 
+  color: #ffffff; 
+ 
+  background: var(--gradient); 
+ 
+  box-shadow: 
+    7px 7px 14px var(--dark-shadow), 
+    -7px -7px 14px var(--light-shadow); 
+} 
+ 
+.success-state h1 { 
+  margin: 0 0 10px; 
+ 
+  font-size: 26px; 
+ 
+  font-weight: 500; 
+} 
+ 
+.success-state p { 
+  margin: 0; 
+ 
+  color: var(--muted); 
+ 
+  font-size: 13px; 
+ 
+  line-height: 1.6; 
+} 
+ 
+.success-state strong { 
+  display: block; 
+ 
+  margin: 10px 0 25px; 
+ 
+  color: var(--primary); 
+ 
+  font-size: 13px; 
+ 
+  word-break: break-word; 
+}

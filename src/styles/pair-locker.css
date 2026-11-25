@@ -1,0 +1,192 @@
+/* ===================================== 
+   DROPORA - PAIR LOCKER 
+===================================== */ 
+ 
+.pair-locker-page { 
+  min-height: 100vh; 
+  padding: 40px 20px; 
+  background: var(--bg); 
+  color: var(--text); 
+} 
+ 
+.pair-locker-container { 
+  max-width: 700px; 
+  margin: 0 auto; 
+} 
+ 
+.pair-back-button { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  margin-bottom: 30px; 
+
+  padding: 10px 0; 
+  border: none; 
+  background: transparent; 
+  color: var(--muted); 
+  font-size: 14px; 
+} 
+ 
+.pair-back-button:hover { 
+  color: var(--primary); 
+} 
+ 
+.pair-locker-card { 
+  max-width: 480px; 
+  margin: 0 auto; 
+  padding: 40px 30px; 
+  border-radius: 20px; 
+  background: var(--card-bg); 
+  color: var(--text); 
+  border: 1px solid var(--border); 
+  box-shadow: 
+    8px 8px 20px var(--dark-shadow), 
+    -8px -8px 20px var(--light-shadow); 
+  text-align: center; 
+} 
+ 
+.pair-locker-icon { 
+  width: 75px; 
+  height: 75px; 
+  margin: 0 auto 20px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  border-radius: 20px; 
+  background: var(--gradient); 
+  color: white; 
+} 
+ 
+.pair-locker-card h2 { 
+  margin-bottom: 12px; 
+  font-size: 25px; 
+  font-weight: 700; 
+} 
+ 
+.pair-description { 
+
+  margin-bottom: 30px; 
+  color: var(--muted); 
+  font-size: 14px; 
+  line-height: 1.7; 
+} 
+ 
+.pair-otp-label { 
+  display: block; 
+  margin-bottom: 14px; 
+  text-align: left; 
+  font-size: 14px; 
+  font-weight: 600; 
+} 
+ 
+.pair-otp-inputs { 
+  display: flex; 
+  justify-content: center; 
+  gap: 12px; 
+  margin-bottom: 22px; 
+} 
+ 
+.pair-otp-inputs input { 
+  width: 55px; 
+  height: 60px; 
+  border: 1px solid var(--border); 
+  border-radius: 12px; 
+  background: var(--input-bg); 
+  color: var(--text); 
+  text-align: center; 
+  font-size: 24px; 
+  font-weight: 700; 
+  box-shadow: 
+    inset 3px 3px 6px var(--dark-shadow), 
+    inset -3px -3px 6px var(--light-shadow); 
+  outline: none; 
+} 
+ 
+.pair-otp-inputs input:focus { 
+  border-color: var(--primary); 
+} 
+ 
+.pair-primary-button { 
+  width: 100%; 
+  min-height: 48px; 
+
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 9px; 
+  border: none; 
+  border-radius: 12px; 
+  background: var(--gradient); 
+  color: white; 
+  font-size: 15px; 
+  font-weight: 600; 
+  transition: transform 0.2s, opacity 0.2s; 
+} 
+ 
+.pair-primary-button:hover { 
+  transform: translateY(-2px); 
+} 
+ 
+.pair-primary-button:disabled { 
+  opacity: 0.6; 
+  cursor: not-allowed; 
+  transform: none; 
+} 
+ 
+.pair-error-message { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 7px; 
+  margin-bottom: 15px; 
+  color: #ef4444; 
+  font-size: 13px; 
+} 
+ 
+.pair-security-note { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 7px; 
+  margin-top: 25px; 
+  color: var(--muted); 
+  font-size: 12px; 
+} 
+ 
+.pair-help-text, 
+
+.pair-success-content p { 
+  margin-top: 20px; 
+  color: var(--muted); 
+  font-size: 13px; 
+  line-height: 1.7; 
+} 
+ 
+.pair-spinner { 
+  animation: pair-spin 1s linear infinite; 
+} 
+ 
+@keyframes pair-spin { 
+  to { 
+    transform: rotate(360deg); 
+  } 
+} 
+ 
+@media (max-width: 480px) { 
+  .pair-locker-page { 
+    padding: 25px 15px; 
+  } 
+ 
+  .pair-locker-card { 
+    padding: 30px 20px; 
+  } 
+ 
+  .pair-otp-inputs { 
+    gap: 9px; 
+  } 
+ 
+  .pair-otp-inputs input { 
+    width: 48px; 
+    height: 55px; 
+  } 
+}
