@@ -1,824 +1,668 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   Package,
   CheckCircle2,
   Clock3,
   XCircle,
+  RefreshCw,
+  History,
   Lock,
   Unlock,
-  ChevronRight,
-  ScanLine,
   Moon,
   Sun,
-  LoaderCircle,
-  BatteryCharging,
+  Wifi,
+  WifiOff,
+  AlertCircle,
 } from "lucide-react";
 
 import { sendRemoteCommand } from "../services/locker";
 import { getDeliveries } from "../services/deliveryService";
 
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
-function Dashboard({ darkMode, setDarkMode }) {
+function getCommandErrorMessage(error) {
+  return (
+    error?.message ||
+    error?.response?.data?.message ||
+    "The command could not be completed."
+  );
+}
+
+function getDeliveryStatus(status) {
+  switch (status) {
+    case "received":
+      return {
+        label: "Received",
+        icon: CheckCircle2,
+        className: "received",
+      };
+
+    case "cancelled":
+      return {
+        label: "Cancelled",
+        icon: XCircle,
+        className: "cancelled",
+      };
+
+    case "to_receive":
+    default:
+      return {
+        label: "To Receive",
+        icon: Clock3,
+        className: "pending",
+      };
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "Date unavailable";
+
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Date unavailable";
+  }
+
+  return date.toLocaleString();
+}
+
+function Dashboard() {
   const navigate = useNavigate();
 
   // ======================================
-  // PAIRED LOCKERS
+  // STATE
   // ======================================
 
-  const [lockers, setLockers] = useState([]);
-  const [lockersLoading, setLockersLoading] = useState(true);
-  const [lockersError, setLockersError] = useState("");
+  const [deviceUuid, setDeviceUuid] = useState(null);
 
-  // ======================================
-  // TELEMETRY
-  // ======================================
+  const [telemetry, setTelemetry] = useState(null);
 
-  const [telemetry, setTelemetry] = useState([]);
-  const [telemetryLoading, setTelemetryLoading] = useState(false);
-  const [telemetryError, setTelemetryError] = useState("");
+  const [deliveries, setDeliveries] = useState([]);
 
-  // ======================================
-  // REMOTE CONTROL
-  // ======================================
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [isControlling, setIsControlling] = useState(false);
-  const [isChangingPower, setIsChangingPower] = useState(false);
+  const [isLockerOnline, setIsLockerOnline] = useState(false);
 
+  const [lockOverride, setLockOverride] = useState(null);
+  const [powerSavingOverride, setPowerSavingOverride] = useState(null);
+
+  const [isLockLoading, setIsLockLoading] = useState(false);
+  const [isSleepLoading, setIsSleepLoading] = useState(false);
+
+  const [controlSuccess, setControlSuccess] = useState("");
   const [controlError, setControlError] = useState("");
-  const [controlMessage, setControlMessage] = useState("");
 
   // ======================================
-  // FETCH PAIRED LOCKERS
+  // AUTH TOKEN
   // ======================================
 
-  const fetchLockers = useCallback(async () => {
+  const getAccessToken = () => {
+    return localStorage.getItem("accessToken");
+  };
+
+  // ======================================
+  // FETCH PAIRED LOCKER
+  // ======================================
+
+  const fetchPairedLocker = useCallback(async () => {
     try {
-      setLockersLoading(true);
-      setLockersError("");
+      const token = getAccessToken();
 
-      const token = localStorage.getItem("accessToken");
+      const response = await fetch(`${API_BASE}/api/locker/paired`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      if (!token) {
-        throw new Error(
-          "Please log in to view your paired lockers."
-        );
+      if (!response.ok) {
+        throw new Error("Failed to fetch paired locker.");
       }
-
-      const response = await fetch(
-        `${API_BASE}/api/locker/paired`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          data.error || "Unable to load paired lockers."
-        );
+      const lockers = Array.isArray(data)
+        ? data
+        : data.lockers || data.pairedLockers || [];
+
+      const pairedLocker = lockers[0];
+
+      if (pairedLocker?.device_uuid) {
+        setDeviceUuid(pairedLocker.device_uuid);
+      } else {
+        setDeviceUuid(null);
       }
-
-      setLockers(
-        Array.isArray(data.devices) ? data.devices : []
-      );
     } catch (error) {
-      console.error("Fetch lockers error:", error);
-
-      setLockersError(
-        error.message || "Unable to load lockers."
-      );
-    } finally {
-      setLockersLoading(false);
+      console.error("Error fetching paired locker:", error);
+      setDeviceUuid(null);
     }
   }, []);
-
-  useEffect(() => {
-    fetchLockers();
-  }, [fetchLockers]);
-
-  // FIRST PAIRED LOCKER
-  const deviceUuid = lockers[0]?.device_uuid;
 
   // ======================================
   // FETCH TELEMETRY
   // ======================================
 
-  const fetchTelemetry = useCallback(async () => {
-    if (!deviceUuid) {
-      setTelemetry([]);
-      return;
-    }
-
-    try {
-      setTelemetryLoading(true);
-      setTelemetryError("");
-
-      const token = localStorage.getItem("accessToken");
-
-      if (!token) {
-        throw new Error(
-          "Please log in to view telemetry."
-        );
+  const fetchTelemetry = useCallback(
+    async (showRefresh = false) => {
+      if (!deviceUuid) {
+        setTelemetry(null);
+        setIsLockerOnline(false);
+        setIsLoading(false);
+        return;
       }
 
-      const response = await fetch(
-        `${API_BASE}/api/telemetry/${encodeURIComponent(
-          deviceUuid
-        )}?offset=0&limit=10`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+      try {
+        if (showRefresh) {
+          setIsRefreshing(true);
         }
-      );
 
-      const data = await response.json();
+        const token = getAccessToken();
 
-      if (!response.ok) {
-        throw new Error(
-          data.error || "Unable to load telemetry data."
+        const response = await fetch(
+          `${API_BASE}/api/telemetry/${deviceUuid}?offset=0&limit=10`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch locker telemetry.");
+        }
+
+        const data = await response.json();
+
+        const telemetryData =
+          data.telemetry ||
+          data.latestTelemetry ||
+          data.data ||
+          data;
+
+        setTelemetry(telemetryData);
+        setIsLockerOnline(true);
+
+        // Clear optimistic lock state once telemetry confirms it.
+        if (
+          lockOverride !== null &&
+          telemetryData.solenoid_locked === lockOverride
+        ) {
+          setLockOverride(null);
+        }
+
+        // Clear optimistic sleep state once telemetry confirms it.
+        if (
+          powerSavingOverride !== null &&
+          telemetryData.power_saving === powerSavingOverride
+        ) {
+          setPowerSavingOverride(null);
+        }
+      } catch (error) {
+        console.error("Error fetching telemetry:", error);
+        setIsLockerOnline(false);
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
       }
+    },
+    [deviceUuid, lockOverride, powerSavingOverride]
+  );
 
-      setTelemetry(
-        Array.isArray(data.telemetry)
-          ? data.telemetry
-          : []
-      );
+  // ======================================
+  // FETCH DELIVERY HISTORY
+  // ======================================
+
+  const fetchDeliveryHistory = useCallback(async () => {
+    try {
+      const response = await getDeliveries();
+
+      const deliveryData =
+        response?.deliveries ||
+        response?.data?.deliveries ||
+        response?.data ||
+        response;
+
+      if (Array.isArray(deliveryData)) {
+        const sortedDeliveries = [...deliveryData].sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
+        );
+
+        setDeliveries(sortedDeliveries);
+      } else {
+        setDeliveries([]);
+      }
     } catch (error) {
-      console.error("Fetch telemetry error:", error);
-
-      setTelemetryError(
-        error.message || "Unable to load telemetry."
-      );
-    } finally {
-      setTelemetryLoading(false);
+      console.error("Error fetching delivery history:", error);
+      setDeliveries([]);
     }
-  }, [deviceUuid]);
+  }, []);
 
-  // REFRESH TELEMETRY EVERY 5 SECONDS
+  // ======================================
+  // INITIAL LOAD
+  // ======================================
+
   useEffect(() => {
-    if (!deviceUuid) {
-      setTelemetry([]);
-      return;
-    }
+    fetchPairedLocker();
+    fetchDeliveryHistory();
+  }, [fetchPairedLocker, fetchDeliveryHistory]);
+
+  // ======================================
+  // REFRESH TELEMETRY EVERY 3 SECONDS
+  // ======================================
+
+  useEffect(() => {
+    if (!deviceUuid) return;
 
     fetchTelemetry();
 
     const interval = setInterval(() => {
       fetchTelemetry();
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [deviceUuid, fetchTelemetry]);
 
   // ======================================
-  // LATEST TELEMETRY
+  // MANUAL REFRESH
   // ======================================
 
-  const latestTelemetry = telemetry[0];
-  const payload = latestTelemetry?.payload || {};
-
-  const weight = payload.object_weight_g;
-  const fillPercent = payload.box_fill_percent;
-
-  const solenoidLocked = payload.solenoid_locked;
-  const doorClosed = payload.door_closed;
-  const powerSaving = payload.power_saving;
-
-  // ACTUAL STATES FROM TELEMETRY
-  const isLocked = solenoidLocked === true;
-  const isPowerSaving = powerSaving === true;
+  const handleRefresh = async () => {
+    await fetchTelemetry(true);
+    await fetchDeliveryHistory();
+  };
 
   // ======================================
-  // REMOTE DOOR LOCK CONTROL
+  // TELEMETRY VALUES
+  // ======================================
+
+  const telemetryLocked = telemetry?.solenoid_locked === true;
+
+  const telemetryPowerSaving = telemetry?.power_saving === true;
+
+  const isLocked =
+    lockOverride !== null ? lockOverride : telemetryLocked;
+
+  const isPowerSaving =
+    powerSavingOverride !== null
+      ? powerSavingOverride
+      : telemetryPowerSaving;
+
+  const objectWeight = telemetry?.object_weight_g ?? 0;
+
+  const boxFillPercent = telemetry?.box_fill_percent ?? 0;
+
+  const doorClosed = telemetry?.door_closed === true;
+
+  // ======================================
+  // REMOTE LOCK / UNLOCK
   // ======================================
 
   const handleLockToggle = async () => {
-    if (!deviceUuid) {
-      setControlError("Please pair a locker first.");
-      return;
-    }
+    if (!deviceUuid || isLockLoading) return;
 
-    if (typeof solenoidLocked !== "boolean") {
-      setControlError(
-        "Waiting for valid locker lock telemetry."
-      );
-      return;
-    }
+    setControlSuccess("");
+    setControlError("");
+    setIsLockLoading(true);
+
+    const nextLockedState = !isLocked;
 
     try {
-      setIsControlling(true);
-      setControlError("");
-      setControlMessage("");
-
-      const data = await sendRemoteCommand({
+      await sendRemoteCommand({
         deviceUuid,
-        doorLocked: !isLocked,
+        doorLocked: nextLockedState,
         powerSaving: isPowerSaving,
       });
 
-      setControlMessage(
-        data.message ||
-          "Door lock command submitted successfully."
+      setLockOverride(nextLockedState);
+
+      setControlSuccess(
+        nextLockedState
+          ? "Locker locked successfully."
+          : "Locker unlocked successfully."
       );
     } catch (error) {
-      console.error("Remote door control error:", error);
+      console.error("Lock command failed:", error);
 
-      setControlError(
-        error.message || "Unable to send door lock command."
-      );
+      setControlError(getCommandErrorMessage(error));
     } finally {
-      setIsControlling(false);
+      setIsLockLoading(false);
     }
   };
 
   // ======================================
-  // REMOTE POWER SAVING CONTROL
+  // SLEEP MODE / POWER SAVING
   // ======================================
 
-  const handlePowerToggle = async () => {
-    if (!deviceUuid) {
-      setControlError("Please pair a locker first.");
-      return;
-    }
+  const handleSleepToggle = async () => {
+    if (!deviceUuid || isSleepLoading) return;
 
-    if (typeof powerSaving !== "boolean") {
-      setControlError(
-        "Waiting for valid power mode telemetry."
-      );
-      return;
-    }
+    setControlSuccess("");
+    setControlError("");
+    setIsSleepLoading(true);
+
+    const nextSleepState = !isPowerSaving;
 
     try {
-      setIsChangingPower(true);
-      setControlError("");
-      setControlMessage("");
-
-      const data = await sendRemoteCommand({
+      await sendRemoteCommand({
         deviceUuid,
         doorLocked: isLocked,
-        powerSaving: !isPowerSaving,
+        powerSaving: nextSleepState,
       });
 
-      setControlMessage(
-        data.message ||
-          "Power mode command submitted successfully."
+      setPowerSavingOverride(nextSleepState);
+
+      setControlSuccess(
+        nextSleepState
+          ? "Sleep Mode enabled."
+          : "Sleep Mode disabled. Locker is awake."
       );
     } catch (error) {
-      console.error("Remote power mode error:", error);
+      console.error("Sleep Mode command failed:", error);
 
-      setControlError(
-        error.message || "Unable to change power mode."
-      );
+      setControlError(getCommandErrorMessage(error));
     } finally {
-      setIsChangingPower(false);
+      setIsSleepLoading(false);
     }
   };
 
   // ======================================
-  // PARCEL HISTORY - BACKEND CONNECTION
+  // NAVIGATION
   // ======================================
 
-  const [parcelHistory, setParcelHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
-  const [historyError, setHistoryError] = useState("");
-
-  const fetchParcelHistory = useCallback(async () => {
-    try {
-      setHistoryLoading(true);
-      setHistoryError("");
-
-      const data = await getDeliveries();
-
-      const deliveries = Array.isArray(data.deliveries)
-        ? data.deliveries
-        : [];
-
-      // Sort newest deliveries first
-      const sortedDeliveries = [...deliveries].sort(
-        (a, b) => {
-          const dateA = new Date(
-            a.created_at || 0
-          ).getTime();
-
-          const dateB = new Date(
-            b.created_at || 0
-          ).getTime();
-
-          return dateB - dateA;
-        }
-      );
-
-      // Display only the latest four deliveries
-      setParcelHistory(
-        sortedDeliveries.slice(0, 4)
-      );
-
-    } catch (error) {
-      console.error(
-        "Dashboard parcel history error:",
-        error
-      );
-
-      setHistoryError(
-        error.message || "Unable to load parcel history."
-      );
-
-      setParcelHistory([]);
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchParcelHistory();
-  }, [fetchParcelHistory]);
-
-  // ======================================
-  // FORMAT PARCEL DATE
-  // ======================================
-
-  const formatParcelDate = (date) => {
-    if (!date) {
-      return "Date unavailable";
-    }
-
-    const parsedDate = new Date(date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-      return "Date unavailable";
-    }
-
-    return parsedDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+  const handleViewHistory = () => {
+    navigate("/delivery-history");
   };
 
   // ======================================
-  // FORMAT PARCEL STATUS
-  // ======================================
-
-  const getParcelStatus = (parcel) => {
-    const status = String(
-      parcel.status || "to_receive"
-    ).toLowerCase();
-
-    const statusConfig = {
-      to_receive: {
-        label: "Ready for Collection",
-        type: "ready",
-      },
-
-      received: {
-        label: "Collected",
-        type: "collected",
-      },
-
-      cancelled: {
-        label: "Cancelled",
-        type: "cancelled",
-      },
-    };
-
-    return (
-      statusConfig[status] || {
-        label: status
-          .replaceAll("_", " ")
-          .replace(/\b\w/g, (letter) =>
-            letter.toUpperCase()
-          ),
-        type: "ready",
-      }
-    );
-  };
-
-  // ======================================
-  // DASHBOARD UI
+  // RENDER
   // ======================================
 
   return (
     <div className="dashboard-page">
-
       {/* HEADER */}
       <header className="header">
-        <div className="header-controls">
+        <div>
+          <h1>Dashboard</h1>
+          <p>Monitor and control your locker.</p>
+        </div>
 
+        <div className="header-controls">
           <div className="online-status">
-            <span className="online-dot"></span>
-            Online
+            {isLockerOnline ? (
+              <>
+                <Wifi size={16} />
+                <span>Online</span>
+              </>
+            ) : (
+              <>
+                <WifiOff size={16} />
+                <span>Offline</span>
+              </>
+            )}
           </div>
 
-          {/* DARK MODE */}
           <button
             className="icon-button"
-            onClick={() => setDarkMode(!darkMode)}
-            aria-label="Toggle dark mode"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Refresh dashboard"
           >
-            {darkMode ? (
-              <Sun size={19} />
-            ) : (
-              <Moon size={19} />
-            )}
+            <RefreshCw
+              size={18}
+              className={isRefreshing ? "refresh-spin" : ""}
+            />
           </button>
-
         </div>
       </header>
 
-      {/* MAIN DASHBOARD CONTENT */}
+      {/* DASHBOARD CONTENT */}
       <main className="dashboard">
-
-        {/* WELCOME */}
         <section className="dashboard-welcome">
-          <div>
-            <p className="dashboard-eyebrow">
-              WELCOME TO
-            </p>
-
-            <h1>DROPORA</h1>
-
-            <p className="dashboard-welcome-subtitle">
-              Manage your parcels and smart lockers in one place.
-            </p>
-          </div>
+          <h2>Welcome back!</h2>
+          <p>
+            Manage your locker, check its status, and monitor your deliveries.
+          </p>
         </section>
 
-        {/* MAIN GRID */}
         <div className="dashboard-grid">
-
           {/* LOCKER CARD */}
           <section className="locker-card">
-
-            {/* CARD HEADER */}
             <div className="card-header">
-
               <div>
-                <p className="card-eyebrow">
-                  YOUR LOCKER
-                </p>
-
-                <h2>Main Compartment</h2>
+                <p className="card-eyebrow">YOUR LOCKER</p>
+                <h2>Smart Locker</h2>
               </div>
 
               <div className="locker-online">
-                <span></span>
-
-                {lockersLoading
-                  ? "Loading..."
-                  : deviceUuid
-                  ? "Paired"
-                  : "Not Paired"}
+                <span
+                  className={
+                    isLockerOnline ? "status-dot online" : "status-dot offline"
+                  }
+                />
+                {isLockerOnline ? "Connected" : "Disconnected"}
               </div>
-
             </div>
 
-            {/* LOCKER STATUS */}
             <div className="locker-visual">
-
               <div className="locker-icon">
                 {isLocked ? (
-                  <Lock size={42} />
+                  <Lock size={48} />
                 ) : (
-                  <Unlock size={42} />
+                  <Unlock size={48} />
                 )}
               </div>
 
-              <h3>
-                {typeof solenoidLocked !== "boolean"
-                  ? "Waiting for Telemetry"
-                  : isLocked
-                  ? "Locker Locked"
-                  : "Locker Unlocked"}
-              </h3>
+              <h3>{isLocked ? "Locker Locked" : "Locker Unlocked"}</h3>
 
               <p>
-                {doorClosed === true
-                  ? "The compartment door is closed."
-                  : doorClosed === false
-                  ? "The compartment door is open."
-                  : "Waiting for door status."}
+                {isLocked
+                  ? "Your locker is secured."
+                  : "Your locker is currently unlocked."}
               </p>
 
+              <button
+                className={`locker-button ${
+                  isLocked ? "unlock-button" : "lock-button"
+                }`}
+                onClick={handleLockToggle}
+                disabled={!deviceUuid || !isLockerOnline || isLockLoading}
+              >
+                {isLockLoading ? (
+                  <>
+                    <RefreshCw size={16} className="refresh-spin" />
+                    Processing...
+                  </>
+                ) : isLocked ? (
+                  <>
+                    <Unlock size={16} />
+                    Unlock Locker
+                  </>
+                ) : (
+                  <>
+                    <Lock size={16} />
+                    Lock Locker
+                  </>
+                )}
+              </button>
             </div>
 
-            {/* REMOTE DOOR LOCK BUTTON */}
-            <button
-              type="button"
-              className={`locker-button ${
-                isLocked ? "unlock-button" : "lock-button"
-              }`}
-              onClick={handleLockToggle}
-              disabled={
-                !deviceUuid ||
-                isControlling ||
-                isChangingPower ||
-                typeof solenoidLocked !== "boolean"
-              }
-            >
-              {isControlling ? (
-                <>
-                  <LoaderCircle size={18} className="spin" />
-                  Sending Command...
-                </>
-              ) : isLocked ? (
-                <>
-                  <Unlock size={18} />
-                  Unlock Locker
-                </>
-              ) : (
-                <>
-                  <Lock size={18} />
-                  Lock Locker
-                </>
-              )}
-            </button>
-
-            {/* REMOTE POWER SAVING MODE */}
+            {/* SLEEP MODE CONTROL */}
             <div className="power-mode-control">
+              <div className="power-mode-info">
+                <div className="power-mode-icon">
+                  {isPowerSaving ? (
+                    <Moon size={22} />
+                  ) : (
+                    <Sun size={22} />
+                  )}
+                </div>
 
-              <div>
-                <p className="card-eyebrow">
-                  POWER MANAGEMENT
-                </p>
-
-                <h3>Power Saving Mode</h3>
-
-                <p>
-                  {typeof powerSaving !== "boolean"
-                    ? "Waiting for power mode telemetry."
-                    : isPowerSaving
-                    ? "Power-saving mode is enabled."
-                    : "Power-saving mode is disabled."}
-                </p>
+                <div>
+                  <h3>Sleep Mode</h3>
+                  <p>
+                    {isPowerSaving
+                      ? "Sleep Mode is enabled."
+                      : "Sleep Mode is disabled."}
+                  </p>
+                </div>
               </div>
 
               <button
-                type="button"
-                className={`locker-button ${
-                  isPowerSaving
-                    ? "lock-button"
-                    : "unlock-button"
-                }`}
-                onClick={handlePowerToggle}
-                disabled={
-                  !deviceUuid ||
-                  isChangingPower ||
-                  isControlling ||
-                  typeof powerSaving !== "boolean"
-                }
+                className="locker-button"
+                onClick={handleSleepToggle}
+                disabled={!deviceUuid || !isLockerOnline || isSleepLoading}
               >
-                {isChangingPower ? (
+                {isSleepLoading ? (
                   <>
-                    <LoaderCircle size={18} className="spin" />
+                    <RefreshCw size={16} className="refresh-spin" />
                     Processing...
                   </>
                 ) : isPowerSaving ? (
                   <>
-                    <Sun size={18} />
-                    Disable Power Saving
+                    <Sun size={16} />
+                    Wake Up
                   </>
                 ) : (
                   <>
-                    <BatteryCharging size={18} />
-                    Enable Power Saving
+                    <Moon size={16} />
+                    Enter Sleep Mode
                   </>
                 )}
               </button>
-
             </div>
 
             {/* COMMAND FEEDBACK */}
-            {controlMessage && (
-              <p className="control-success">
-                {controlMessage}
-              </p>
+            {controlSuccess && (
+              <div className="control-success">
+                <CheckCircle2 size={16} />
+                <span>{controlSuccess}</span>
+              </div>
             )}
 
             {controlError && (
-              <p className="control-error">
-                {controlError}
-              </p>
-            )}
-
-            {/* LOCKER ERRORS */}
-            {lockersError && (
-              <p className="control-error">
-                {lockersError}
-              </p>
-            )}
-
-            {telemetryError && (
-              <p className="control-error">
-                {telemetryError}
-              </p>
-            )}
-
-            {/* TELEMETRY SUMMARY */}
-            {deviceUuid && (
-              <div className="locker-telemetry-summary">
-
-                <p className="card-eyebrow">
-                  LATEST TELEMETRY
-                </p>
-
-                <div>
-                  <span>Door Status</span>
-
-                  <strong>
-                    {doorClosed === true
-                      ? "Closed"
-                      : doorClosed === false
-                      ? "Open"
-                      : "Unknown"}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Power Mode</span>
-
-                  <strong>
-                    {typeof powerSaving !== "boolean"
-                      ? "Unknown"
-                      : isPowerSaving
-                      ? "Saving"
-                      : "Normal"}
-                  </strong>
-                </div>
-
-                {weight !== undefined && (
-                  <div>
-                    <span>Object Weight</span>
-                    <strong>{weight} g</strong>
-                  </div>
-                )}
-
-                {fillPercent !== undefined && (
-                  <div>
-                    <span>Box Fill Level</span>
-                    <strong>{fillPercent}%</strong>
-                  </div>
-                )}
-
-                {telemetryLoading && (
-                  <p className="telemetry-refreshing">
-                    <LoaderCircle
-                      size={14}
-                      className="spin"
-                    />
-                    Updating telemetry...
-                  </p>
-                )}
-
+              <div className="control-error">
+                <AlertCircle size={16} />
+                <span>{controlError}</span>
               </div>
             )}
 
-            {/* PAIR DEVICE */}
-            <button
-              className="scan-button"
-              onClick={() => navigate("/pair-locker")}
-            >
-              <ScanLine size={18} />
-              Scan / Pair Delivery Device
-            </button>
+            {/* TELEMETRY */}
+            <div className="locker-telemetry-summary">
+              <div>
+                <span>Object Weight</span>
+                <strong>{Number(objectWeight).toFixed(1)} g</strong>
+              </div>
 
-          </section>
+              <div>
+                <span>Box Fill</span>
+                <strong>{Number(boxFillPercent).toFixed(0)}%</strong>
+              </div>
 
-        </div>
-
-        {/* ======================================
-            PARCEL HISTORY
-        ====================================== */}
-
-        <section className="history-card">
-
-          <div className="card-header">
-
-            <div>
-              <p className="card-eyebrow">
-                PARCEL HISTORY
-              </p>
-
-              <h2>Received Parcels</h2>
+              <div>
+                <span>Door</span>
+                <strong>{doorClosed ? "Closed" : "Open"}</strong>
+              </div>
             </div>
 
-            <button
-              className="view-history-button"
-              onClick={() => navigate("/delivery-history")}
-            >
-              View All
-              <ChevronRight size={17} />
-            </button>
-
-          </div>
-
-          {/* BACKEND DELIVERY RECORDS */}
-          <div className="history-list">
-
-            {historyLoading ? (
-
-              <p className="history-empty">
-                Loading parcel history...
+            {isRefreshing && (
+              <p className="telemetry-refreshing">
+                <RefreshCw size={14} className="refresh-spin" />
+                Updating telemetry...
               </p>
-
-            ) : historyError ? (
-
-              <div className="history-empty">
-                <p>{historyError}</p>
-
-                <button
-                  type="button"
-                  onClick={fetchParcelHistory}
-                  disabled={historyLoading}
-                >
-                  Try Again
-                </button>
-              </div>
-
-            ) : parcelHistory.length === 0 ? (
-
-              <p className="history-empty">
-                No delivery records available.
-              </p>
-
-            ) : (
-
-              parcelHistory.map((parcel) => {
-                const status = String(
-                  parcel.status || "to_receive"
-                ).toLowerCase();
-
-                const statusInfo = getParcelStatus(parcel);
-
-                return (
-                  <div
-                    className="history-item"
-                    key={parcel.id}
-                  >
-
-                    {/* PACKAGE ICON */}
-                    <div className="history-package-icon">
-                      <Package size={20} />
-                    </div>
-
-                    {/* PARCEL INFORMATION */}
-                    <div className="history-info">
-
-                      <h3>
-                        {parcel.courier_type || "Unknown Courier"}
-                      </h3>
-
-                      <p>
-                        {parcel.parcel_id || "Unavailable"}
-                        {" · "}
-                        {formatParcelDate(parcel.created_at)}
-                      </p>
-
-                    </div>
-
-                    {/* PARCEL STATUS */}
-                    <div
-                      className={`history-status ${statusInfo.type}`}
-                    >
-
-                      {status === "received" ? (
-                        <CheckCircle2 size={15} />
-                      ) : status === "cancelled" ? (
-                        <XCircle size={15} />
-                      ) : (
-                        <Clock3 size={15} />
-                      )}
-
-                      {statusInfo.label}
-
-                    </div>
-
-                    <ChevronRight
-                      className="history-arrow"
-                      size={18}
-                    />
-
-                  </div>
-                );
-              })
-
             )}
 
-          </div>
+            {!deviceUuid && !isLoading && (
+              <p className="control-error">
+                No paired locker found. Please pair your locker first.
+              </p>
+            )}
+          </section>
 
-        </section>
+          {/* DELIVERY HISTORY CARD */}
+          <section className="history-card">
+            <div className="card-header">
+              <div>
+                <p className="card-eyebrow">RECENT ACTIVITY</p>
+                <h2>Delivery History</h2>
+              </div>
 
+              <button
+                className="view-history-button"
+                onClick={handleViewHistory}
+              >
+                View All
+                <History size={16} />
+              </button>
+            </div>
+
+            {isLoading ? (
+              <div className="history-empty">
+                <RefreshCw size={20} className="refresh-spin" />
+                <p>Loading delivery history...</p>
+              </div>
+            ) : deliveries.length === 0 ? (
+              <div className="history-empty">
+                <Package size={32} />
+                <p>No deliveries yet.</p>
+              </div>
+            ) : (
+              <div className="history-list">
+                {deliveries.slice(0, 4).map((delivery) => {
+                  const status = getDeliveryStatus(delivery.status);
+                  const StatusIcon = status.icon;
+
+                  return (
+                    <div
+                      className="history-item"
+                      key={delivery.id}
+                    >
+                      <div className="history-package-icon">
+                        <Package size={20} />
+                      </div>
+
+                      <div className="history-info">
+                        <strong>
+                          {delivery.courier_type || "Delivery"}
+                        </strong>
+
+                        <span>
+                          Parcel ID: {delivery.parcel_id || "N/A"}
+                        </span>
+
+                        <small>{formatDate(delivery.created_at)}</small>
+                      </div>
+
+                      <div
+                        className={`history-status ${status.className}`}
+                      >
+                        <StatusIcon size={14} />
+                        <span>{status.label}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              className="scan-button"
+              onClick={() => navigate("/register-delivery")}
+            >
+              <Package size={16} />
+              Register New Delivery
+            </button>
+          </section>
+        </div>
       </main>
     </div>
   );

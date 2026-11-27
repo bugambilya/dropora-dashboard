@@ -821,3 +821,476 @@
     font-size: 12px; 
   } 
 }
+
+
+/* DELETE ACCOUNT SIDEBAR BUTTON */
+
+.sidebar-delete-account {
+  color: #dc2626;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebar-delete-account:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+/* =========================================
+   DROPORA RESPONSIVE LAYOUT
+   Preserves your existing colors
+========================================= */
+
+/* Desktop layout */
+
+.dashboard-body {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+.dashboard-sidebar {
+  flex: 0 0 250px;
+  width: 250px;
+  min-width: 250px;
+  min-height: 100vh;
+  height: auto;
+  box-sizing: border-box;
+}
+
+.dashboard-page-content {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.dashboard-body > .dashboard {
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+/* Locker and history equal width */
+
+.dashboard-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-bottom-grid .locker-section,
+.dashboard-bottom-grid .history-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 450px;
+  height: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Prevent content overflow */
+
+.dashboard-locker-item,
+.history-item,
+.history-info,
+.dashboard-locker-info {
+  min-width: 0;
+}
+
+.dashboard-locker-info p,
+.dashboard-locker-info small,
+.history-info span,
+.history-info small {
+  overflow-wrap: anywhere;
+}
+
+/* Tablet */
+
+@media (max-width: 1100px) {
+  .dashboard-sidebar {
+    flex-basis: 210px;
+    width: 210px;
+    min-width: 210px;
+  }
+
+  .dashboard-body > .dashboard {
+    padding: 24px 20px;
+  }
+
+  .dashboard-bottom-grid {
+    gap: 18px;
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 750px) {
+  .dashboard-body {
+    display: block;
+  }
+
+  /* Bottom navigation */
+
+  .dashboard-sidebar {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+
+    padding: 7px 8px;
+    padding-bottom: max(7px, env(safe-area-inset-bottom));
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 4px;
+
+    border-right: none;
+    border-top: 1px solid var(--border);
+    box-sizing: border-box;
+  }
+
+  .sidebar-brand,
+  .sidebar-label {
+    display: none;
+  }
+
+  .sidebar-navigation {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .sidebar-spacer {
+    display: none;
+  }
+
+  .sidebar-link {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 54px;
+    height: 54px;
+
+    padding: 5px 2px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    font-size: 10px;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .sidebar-link svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-link span {
+    display: block;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .sidebar-logout,
+  .sidebar-delete-account {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 54px;
+    height: 54px;
+    margin: 0;
+    padding: 5px 2px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    font-size: 10px;
+  }
+
+  /* Main content */
+
+  .dashboard-page-content {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    padding-bottom: 85px;
+  }
+
+  .dashboard-body > .dashboard {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
+    padding: 22px 16px 100px;
+  }
+
+  /* Header */
+
+  .header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-controls {
+    gap: 8px;
+  }
+
+  /* Stack locker and history */
+
+  .dashboard-bottom-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .dashboard-bottom-grid .locker-section,
+  .dashboard-bottom-grid .history-card {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+  }
+
+  /* Locker section */
+
+  .dashboard-lockers-section {
+    padding: 18px;
+  }
+
+  .dashboard-section-heading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .dashboard-pair-button {
+    margin-left: 0;
+  }
+
+  .dashboard-locker-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .dashboard-locker-info {
+    flex: 1 1 150px;
+  }
+
+  .dashboard-locker-status {
+    width: 100%;
+    padding-left: 63px;
+  }
+
+  /* History */
+
+  .history-item {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .history-info {
+    flex: 1;
+  }
+}
+
+/* Small phones */
+
+@media (max-width: 480px) {
+  .dashboard-body > .dashboard {
+    padding: 18px 12px 100px;
+  }
+
+  .dashboard-lockers-section {
+    padding: 14px;
+  }
+
+  .dashboard-section-heading h2 {
+    font-size: 18px;
+  }
+
+  .dashboard-pair-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-locker-item {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .dashboard-locker-status {
+    padding-left: 58px;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+
+  .online-status {
+    font-size: 11px;
+  }
+
+  .sidebar-link,
+  .sidebar-link span {
+    font-size: 9px;
+  }
+
+  .dashboard-sidebar {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+}
+
+
+
+/* =========================================
+   MOBILE BOTTOM NAVIGATION FIX
+   Keeps existing colors
+========================================= */
+
+@media (max-width: 750px) {
+  .dashboard-sidebar {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    top: auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+
+    gap: 4px;
+    padding: 6px 8px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+  }
+
+  .sidebar-brand,
+  .sidebar-label,
+  .sidebar-spacer {
+    display: none;
+  }
+
+  /* Allow navigation links and account buttons
+     to share the same horizontal scrolling row */
+
+  .sidebar-navigation {
+    display: contents;
+  }
+
+  .sidebar-link,
+  .sidebar-logout,
+  .sidebar-delete-account {
+    flex: 0 0 70px;
+
+    width: 70px;
+    min-width: 70px;
+    max-width: 70px;
+
+    height: 60px;
+    min-height: 60px;
+
+    margin: 0;
+    padding: 5px 2px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    box-sizing: border-box;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .sidebar-link svg,
+  .sidebar-logout svg,
+  .sidebar-delete-account svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-link span {
+    display: block;
+    width: 100%;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .sidebar-logout,
+  .sidebar-delete-account {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  /* Hide scrollbar but keep scrolling */
+
+  .dashboard-sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-sidebar {
+    scrollbar-width: none;
+  }
+
+  /* Leave space above the fixed bottom navigation */
+
+  .pair-locker-page {
+    padding-bottom: 100px;
+  }
+
+  .dashboard-page-content {
+    padding-bottom: 85px;
+  }
+}

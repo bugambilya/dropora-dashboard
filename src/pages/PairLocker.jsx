@@ -10,7 +10,7 @@ import {
   Copy,
 } from "lucide-react";
 
-import { apiRequest } from "../services/api";
+import { generatePairingCode } from "../services/locker";
 
 function PairLocker() {
   const navigate = useNavigate();
@@ -32,24 +32,17 @@ function PairLocker() {
     setCopied(false);
 
     try {
-      const token = localStorage.getItem("accessToken");
-
-      if (!token) {
-        throw new Error("Please log in again.");
-      }
-
-      const data = await apiRequest("/locker/pairing-code", {
-        method: "POST",
-      });
+      const data = await generatePairingCode();
 
       if (!data.pair_code) {
-        throw new Error("The server did not return a pairing code.");
+        throw new Error(
+          "The server did not return a pairing code."
+        );
       }
 
-      setPairCode(data.pair_code);
+      setPairCode(String(data.pair_code));
       setExpiresAt(data.expires_at || "");
       setSuccess(true);
-
     } catch (err) {
       console.error("Generate pairing code error:", err);
 
@@ -67,13 +60,14 @@ function PairLocker() {
       await navigator.clipboard.writeText(pairCode);
 
       setCopied(true);
+      setError("");
 
       setTimeout(() => {
         setCopied(false);
       }, 2000);
-
     } catch (err) {
       console.error("Copy code error:", err);
+
       setError("Unable to copy pairing code.");
     }
   };
@@ -103,6 +97,7 @@ function PairLocker() {
                 to connect it to your account.
               </p>
 
+              {/* PAIRING CODE */}
               <div className="pair-code-display">
                 <div className="pair-code">
                   {pairCode}
@@ -118,6 +113,18 @@ function PairLocker() {
                 </button>
               </div>
 
+              {/* ERROR MESSAGE */}
+              {error && (
+                <div
+                  className="pair-error-message"
+                  role="alert"
+                >
+                  <AlertCircle size={16} />
+                  {error}
+                </div>
+              )}
+
+              {/* EXPIRATION */}
               {expiresAt && (
                 <p className="pair-expiry-text">
                   Code expires:{" "}
@@ -125,6 +132,7 @@ function PairLocker() {
                 </p>
               )}
 
+              {/* VIEW LOCKERS */}
               <button
                 type="button"
                 className="pair-primary-button"
@@ -133,6 +141,7 @@ function PairLocker() {
                 View My Lockers
               </button>
 
+              {/* GENERATE ANOTHER CODE */}
               <button
                 type="button"
                 className="pair-secondary-button"
@@ -154,6 +163,7 @@ function PairLocker() {
                 your DROPORA smart locker to your account.
               </p>
 
+              {/* ERROR MESSAGE */}
               {error && (
                 <div
                   className="pair-error-message"
@@ -164,6 +174,7 @@ function PairLocker() {
                 </div>
               )}
 
+              {/* GENERATE BUTTON */}
               <button
                 type="button"
                 className="pair-primary-button"
@@ -186,14 +197,15 @@ function PairLocker() {
                 )}
               </button>
 
+              {/* SECURITY NOTE */}
               <div className="pair-security-note">
                 <ShieldCheck size={16} />
                 Secure locker pairing
               </div>
 
               <p className="pair-help-text">
-                Your pairing code is valid for 5 minutes.
-                Enter it on your physical locker before it expires.
+                Enter the generated code on your physical
+                locker before it expires.
               </p>
             </>
           )}

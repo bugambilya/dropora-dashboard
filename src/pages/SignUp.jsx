@@ -35,7 +35,12 @@ function SignUp() {
     const trimmedName = name.trim();
     const trimmedEmail = email.trim();
 
-    if (!trimmedName || !trimmedEmail) {
+    if (
+      !trimmedName ||
+      !trimmedEmail ||
+      !password ||
+      !confirmPassword
+    ) {
       setError("Please complete all required fields.");
       return;
     }
@@ -53,19 +58,22 @@ function SignUp() {
     try {
       setLoading(true);
 
+      // Register account using the backend API
       await registerUser({
         email: trimmedEmail,
         password,
         username: trimmedName,
       });
 
-      // Registration successful: go directly to Login
+      // registerUser() in api.js saves session tokens
+      // automatically when the backend returns a session.
+
+      // Go to Login after successful registration
       navigate("/login", {
         state: {
           email: trimmedEmail,
         },
       });
-
     } catch (err) {
       console.error("Signup error:", err);
 
@@ -117,11 +125,11 @@ function SignUp() {
           {/* SIGNUP FORM */}
           <form onSubmit={handleSignUp}>
 
-            {/* FULL NAME */}
+            {/* USERNAME */}
             <div className="form-group">
 
               <label htmlFor="signup-name">
-                Full Name
+                Username
               </label>
 
               <div className="input-wrapper">
@@ -131,10 +139,10 @@ function SignUp() {
                 <input
                   id="signup-name"
                   type="text"
-                  placeholder="Juan Dela Cruz"
+                  placeholder="Choose a username"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  autoComplete="name"
+                  autoComplete="username"
                   required
                 />
 
@@ -190,9 +198,13 @@ function SignUp() {
                 <button
                   type="button"
                   className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() =>
+                    setShowPassword(!showPassword)
+                  }
                   aria-label={
-                    showPassword ? "Hide password" : "Show password"
+                    showPassword
+                      ? "Hide password"
+                      : "Show password"
                   }
                 >
                   {showPassword ? (
@@ -219,7 +231,9 @@ function SignUp() {
                 <input
                   id="signup-confirm-password"
                   type={
-                    showConfirmPassword ? "text" : "password"
+                    showConfirmPassword
+                      ? "text"
+                      : "password"
                   }
                   placeholder="Confirm your password"
                   value={confirmPassword}
@@ -234,7 +248,9 @@ function SignUp() {
                   type="button"
                   className="password-toggle"
                   onClick={() =>
-                    setShowConfirmPassword(!showConfirmPassword)
+                    setShowConfirmPassword(
+                      !showConfirmPassword
+                    )
                   }
                   aria-label={
                     showConfirmPassword
@@ -265,7 +281,9 @@ function SignUp() {
               className="auth-primary-button"
               disabled={loading}
             >
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading
+                ? "Creating Account..."
+                : "Create Account"}
 
               {!loading && <ArrowRight size={18} />}
             </button>

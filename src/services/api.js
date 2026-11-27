@@ -2,12 +2,18 @@
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
+// ======================================
+// TOKEN AND SESSION
+// ======================================
+
 // GET ACCESS TOKEN
 export const getToken = () => {
   return localStorage.getItem("accessToken");
 };
 
 // SAVE SESSION
+let refreshTimer = null;
+
 export const saveSession = (session) => {
   if (session?.access_token) {
     localStorage.setItem("accessToken", session.access_token);
@@ -16,23 +22,63 @@ export const saveSession = (session) => {
   if (session?.refresh_token) {
     localStorage.setItem("refreshToken", session.refresh_token);
   }
+
+  // Schedule the next refresh when a session is saved
+  if (session?.access_token && session?.refresh_token) {
+    scheduleTokenRefresh(session.expires_in);
+  }
 };
 
 // CLEAR SESSION
 export const clearSession = () => {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
+  localStorage.removeItem("userId");
+
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+};
+
+// ======================================
+// AUTOMATIC TOKEN REFRESH
+// ======================================
+
+let refreshPromise = null;
+
+// Refresh before the access token expires
+const scheduleTokenRefresh = (expiresIn = 1800) => {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+  }
+
+  // Refresh 5 minutes before expiration.
+  // Default expires_in is 1800 seconds (30 minutes).
+  const refreshDelay = Math.max(
+    60 * 1000,
+    (Number(expiresIn) || 1800) * 1000 - 5 * 60 * 1000
+  );
+
+  refreshTimer = setTimeout(async () => {
+    try {
+      await refreshSession();
+    } catch (error) {
+      console.error("Automatic token refresh failed:", error);
+    }
+  }, refreshDelay);
 };
 
 // REFRESH SESSION
-let refreshPromise = null;
-
 export const refreshSession = async () => {
   const refreshToken = localStorage.getItem("refreshToken");
 
   if (!refreshToken) {
     clearSession();
-    throw new Error("Your session has expired. Please log in again.");
+
+    throw new Error(
+      "Your session has expired. Please log in again."
+    );
   }
 
   // Prevent multiple simultaneous refresh requests
@@ -58,19 +104,21 @@ export const refreshSession = async () => {
 
       throw new Error(
         data.error ||
-        data.message ||
-        "Session expired. Please log in again."
+          data.message ||
+          "Session expired. Please log in again."
       );
     }
 
-    // Supports either { session: {...} } or a direct session response
+    // Backend response contains session object
     const session = data.session || data;
 
-    if (!session.access_token) {
+    if (!session.access_token || !session.refresh_token) {
       clearSession();
+
       throw new Error("Unable to refresh your session.");
     }
 
+    // Save the NEW access and refresh tokens
     saveSession(session);
 
     return session.access_token;
@@ -83,7 +131,10 @@ export const refreshSession = async () => {
   }
 };
 
+// ======================================
 // INTERNAL REQUEST FUNCTION
+// ======================================
+
 const sendRequest = async (endpoint, options = {}) => {
   const token = getToken();
 
@@ -102,26 +153,24 @@ const sendRequest = async (endpoint, options = {}) => {
   });
 };
 
+// ======================================
 // REUSABLE API REQUEST
+// ======================================
+
 export const apiRequest = async (endpoint, options = {}) => {
   try {
     let response = await sendRequest(endpoint, options);
 
-    // Refresh token if access token is expired
+    // If access token expired, refresh and retry once
     if (response.status === 401) {
       const newToken = await refreshSession();
 
-      const headers = {
-        ...options.headers,
-        Authorization: `Bearer ${newToken}`,
-      };
-
-      // Retry original request once
       response = await fetch(`${API_BASE}/api${endpoint}`, {
         ...options,
         headers: {
           "Content-Type": "application/json",
-          ...headers,
+          ...options.headers,
+          Authorization: `Bearer ${newToken}`,
         },
       });
     }
@@ -131,8 +180,8 @@ export const apiRequest = async (endpoint, options = {}) => {
     if (!response.ok) {
       throw new Error(
         data.error ||
-        data.message ||
-        `Request failed with status ${response.status}.`
+          data.message ||
+          `Request failed with status ${response.status}.`
       );
     }
 
@@ -143,13 +192,16 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
+// ======================================
 // REGISTER USER
+// ======================================
+
 export const registerUser = async ({
   email,
   password,
   username,
 }) => {
-  return apiRequest("/auth/register", {
+  const data = await apiRequest("/auth/register", {
     method: "POST",
     body: JSON.stringify({
       email: email.trim(),
@@ -157,9 +209,19 @@ export const registerUser = async ({
       username: username.trim(),
     }),
   });
+
+  // Save session if registration returns one
+  if (data.session) {
+    saveSession(data.session);
+  }
+
+  return data;
 };
 
+// ======================================
 // LOGIN USER
+// ======================================
+
 export const loginUser = async ({ email, password }) => {
   const data = await apiRequest("/auth/login", {
     method: "POST",
@@ -176,19 +238,56 @@ export const loginUser = async ({ email, password }) => {
   return data;
 };
 
+// ======================================
 // GET CURRENT USER
+// ======================================
+
 export const getCurrentUser = async () => {
-  return apiRequest("/auth/me", {
+  const data = await apiRequest("/auth/me", {
     method: "GET",
   });
+
+  const user = data.user;
+
+  if (user?.id) {
+    localStorage.setItem("userId", user.id);
+  } else if (user?.profile?.id) {
+    localStorage.setItem("userId", user.profile.id);
+  }
+
+  return data;
 };
 
+// GET SAVED USER ID
+export const getUserId = () => {
+  return localStorage.getItem("userId");
+};
+
+// ======================================
 // LOGOUT USER
+// ======================================
+
 export const logoutUser = async () => {
   try {
     await apiRequest("/auth/logout", {
       method: "POST",
     });
+  } finally {
+    clearSession();
+  }
+};
+
+// ======================================
+// DELETE ACCOUNT
+// ======================================
+
+export const deleteAccount = async () => {
+  try {
+    const data = await apiRequest("/auth/delete", {
+      method: "DELETE",
+    });
+
+    return data;
   } finally {
     clearSession();
   }

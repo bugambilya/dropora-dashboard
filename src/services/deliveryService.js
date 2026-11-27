@@ -1,49 +1,82 @@
+
 import { apiRequest } from "./api";
 
-// GET ALL DELIVERIES
-export const getDeliveries = async () => {
-  try {
-    return await apiRequest("/delivery");
-  } catch (error) {
-    console.error("Get deliveries error:", error);
-    throw error;
-  }
+// ======================================
+// GET DELIVERY HISTORY
+// ======================================
+export const getDeliveries = () => {
+  return apiRequest("/delivery", {
+    method: "GET",
+  });
 };
 
-// REGISTER A DELIVERY
-export const registerDelivery = async (deliveryData) => {
-  try {
-    return await apiRequest("/delivery", {
-      method: "POST",
-      body: JSON.stringify(deliveryData),
-    });
-  } catch (error) {
-    console.error("Register delivery error:", error);
-    throw error;
+// ======================================
+// REGISTER NEW DELIVERY
+// ======================================
+export const registerDelivery = ({
+  courier_type,
+  parcel_id,
+}) => {
+  const supportedCouriers = [
+    "FLASH",
+    "SPX",
+    "J&T",
+  ];
+
+  if (!supportedCouriers.includes(courier_type)) {
+    throw new Error("Unsupported courier type.");
   }
+
+  const parcelId = String(parcel_id || "").trim();
+
+  if (!parcelId) {
+    throw new Error("Parcel ID is required.");
+  }
+
+  if (!/^\d+$/.test(parcelId)) {
+    throw new Error(
+      "Parcel ID must contain numbers only."
+    );
+  }
+
+  return apiRequest("/delivery", {
+    method: "POST",
+    body: JSON.stringify({
+      courier_type,
+      parcel_id: parcelId,
+    }),
+  });
 };
 
+// ======================================
 // UPDATE DELIVERY STATUS
-export const updateDeliveryStatus = async (id, status) => {
-  try {
-    return await apiRequest(`/delivery/${id}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
-  } catch (error) {
-    console.error("Update delivery status error:", error);
-    throw error;
+// ======================================
+export const updateDeliveryStatus = (
+  deliveryId,
+  status
+) => {
+  if (!deliveryId) {
+    throw new Error("Delivery ID is required.");
   }
-};
 
-// DELETE A DELIVERY
-export const deleteDelivery = async (id) => {
-  try {
-    return await apiRequest(`/delivery/${id}`, {
-      method: "DELETE",
-    });
-  } catch (error) {
-    console.error("Delete delivery error:", error);
-    throw error;
+  const allowedStatuses = [
+    "received",
+    "cancelled",
+  ];
+
+  if (!allowedStatuses.includes(status)) {
+    throw new Error("Invalid delivery status.");
   }
+
+  return apiRequest(
+    `/delivery/${encodeURIComponent(
+      deliveryId
+    )}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        status,
+      }),
+    }
+  );
 };

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   getPairedLockers,
   getLockerTelemetry,
+  refreshLockerTelemetry,
 } from "../services/telemetryService";
 
 import {
@@ -14,7 +15,6 @@ import {
   Unlock,
   DoorOpen,
   DoorClosed,
-  Radar,
   Package,
   Wifi,
   WifiOff,
@@ -32,11 +32,11 @@ function LockerTelemetry() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  // ======================================
   // GET PAIRED LOCKERS
+  // ======================================
   const loadLockers = useCallback(async () => {
     try {
-      setError("");
-
       const data = await getPairedLockers();
       const devices = data.devices || [];
 
@@ -46,7 +46,8 @@ function LockerTelemetry() {
         if (
           previous &&
           devices.some(
-            (locker) => locker.device_uuid === previous
+            (locker) =>
+              locker.device_uuid === previous
           )
         ) {
           return previous;
@@ -73,64 +74,111 @@ function LockerTelemetry() {
     }
   }, []);
 
-  // GET LOCKER TELEMETRY
-  const loadTelemetry = useCallback(async (deviceUuid) => {
-    if (!deviceUuid) {
-      setTelemetry([]);
-      return;
-    }
+  // ======================================
+  // GET LOCKER TELEMETRY HISTORY
+  // ======================================
+  const loadTelemetry = useCallback(
+    async (deviceUuid) => {
+      if (!deviceUuid) {
+        setTelemetry([]);
+        return;
+      }
 
-    try {
-      const data = await getLockerTelemetry(
-        deviceUuid,
-        0,
-        10
-      );
+      try {
+        const data = await getLockerTelemetry(
+          deviceUuid,
+          0,
+          10
+        );
 
-      setTelemetry(data.telemetry || []);
-      setError("");
-    } catch (err) {
-      console.error("Load telemetry error:", err);
+        setTelemetry(data.telemetry || []);
+        setError("");
+      } catch (err) {
+        console.error("Load telemetry error:", err);
 
-      setError(
-        err.message || "Failed to load telemetry."
-      );
-    }
-  }, []);
+        setError(
+          err.message || "Failed to load telemetry."
+        );
+      }
+    },
+    []
+  );
 
+  // ======================================
   // INITIAL LOADING
+  // ======================================
   useEffect(() => {
     const initialize = async () => {
       setLoading(true);
+
       await loadLockers();
+
       setLoading(false);
     };
 
     initialize();
   }, [loadLockers]);
 
-  // FETCH TELEMETRY WHEN LOCKER CHANGES
+  // ======================================
+  // REQUEST LIVE TELEMETRY WHEN LOCKER CHANGES
+  // ======================================
   useEffect(() => {
     if (!selectedLocker) {
       setTelemetry([]);
       return;
     }
 
-    loadTelemetry(selectedLocker);
+    let cancelled = false;
+
+    const initializeTelemetry = async () => {
+      try {
+        setError("");
+
+        // Request a new sensor reading from ESP32
+        await refreshLockerTelemetry(selectedLocker);
+
+        if (cancelled) return;
+
+        // Get latest telemetry records
+        await loadTelemetry(selectedLocker);
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error(
+          "Initialize telemetry error:",
+          err
+        );
+
+        setError(
+          err.message ||
+            "Unable to request live telemetry."
+        );
+      }
+    };
+
+    initializeTelemetry();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedLocker, loadTelemetry]);
 
-  // AUTO-REFRESH EVERY 5 SECONDS
+  // ======================================
+  // AUTO-REFRESH TELEMETRY EVERY 3 SECONDS
+  // ======================================
   useEffect(() => {
     if (!selectedLocker) return;
 
     const interval = setInterval(() => {
       loadTelemetry(selectedLocker);
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [selectedLocker, loadTelemetry]);
 
+  // ======================================
   // MANUAL REFRESH
+  // ======================================
   const handleRefresh = async () => {
     setRefreshing(true);
     setError("");
@@ -147,34 +195,52 @@ function LockerTelemetry() {
         ? selectedLocker
         : devices[0]?.device_uuid;
 
-      if (targetUuid) {
-        if (targetUuid !== selectedLocker) {
-          setSelectedLocker(targetUuid);
-        }
-
-        await loadTelemetry(targetUuid);
-      } else {
+      if (!targetUuid) {
         setTelemetry([]);
+        return;
       }
+
+      // Request a fresh reading from ESP32
+      await refreshLockerTelemetry(targetUuid);
+
+      // Fetch latest telemetry history
+      await loadTelemetry(targetUuid);
+
+      if (targetUuid !== selectedLocker) {
+        setSelectedLocker(targetUuid);
+      }
+    } catch (err) {
+      console.error("Refresh telemetry error:", err);
+
+      setError(
+        err.message ||
+          "Unable to refresh telemetry."
+      );
     } finally {
       setRefreshing(false);
     }
   };
 
+  // ======================================
   // LATEST TELEMETRY
+  // ======================================
   const latest =
     telemetry.length > 0 ? telemetry[0] : null;
 
   const payload = latest?.payload || {};
 
+  // ======================================
   // SENSOR VALUES
+  // ======================================
   const weight = payload.object_weight_g;
   const fillPercent = payload.box_fill_percent;
   const isLocked = payload.solenoid_locked;
   const isDoorClosed = payload.door_closed;
   const powerSaving = payload.power_saving;
 
+  // ======================================
   // ULTRASONIC DISTANCE
+  // ======================================
   const distance =
     payload.ultrasonic_distance_cm ??
     payload.distance_cm ??
@@ -184,7 +250,9 @@ function LockerTelemetry() {
     payload.distance ??
     null;
 
+  // ======================================
   // FORMAT DATE
+  // ======================================
   const formatDate = (date) => {
     if (!date) return "--";
 
@@ -200,8 +268,14 @@ function LockerTelemetry() {
     });
   };
 
+  // ======================================
   // STATUS HELPER
-  const getStatus = (value, trueLabel, falseLabel) => {
+  // ======================================
+  const getStatus = (
+    value,
+    trueLabel,
+    falseLabel
+  ) => {
     if (value === undefined || value === null) {
       return {
         label: "No data",
@@ -233,17 +307,27 @@ function LockerTelemetry() {
     ? "Online"
     : "Waiting for telemetry";
 
+  // ======================================
+  // LOADING SCREEN
+  // ======================================
   if (loading) {
     return (
       <div className="telemetry-page">
         <div className="telemetry-loading">
-          <RefreshCw className="spin" size={30} />
+          <RefreshCw
+            className="spin"
+            size={30}
+          />
+
           <p>Loading locker telemetry...</p>
         </div>
       </div>
     );
   }
 
+  // ======================================
+  // MAIN PAGE
+  // ======================================
   return (
     <div className="telemetry-page">
 
@@ -267,13 +351,14 @@ function LockerTelemetry() {
             className={refreshing ? "spin" : ""}
           />
 
-          {refreshing ? "Refreshing..." : "Refresh"}
+          {refreshing
+            ? "Refreshing..."
+            : "Refresh"}
         </button>
       </div>
 
       {/* LOCKER SELECTOR */}
       <div className="telemetry-toolbar">
-
         <div className="telemetry-device-selector">
           <label htmlFor="locker-select">
             Select Locker
@@ -316,13 +401,13 @@ function LockerTelemetry() {
             </>
           )}
         </div>
-
       </div>
 
       {/* ERROR */}
       {error && (
         <div className="telemetry-error">
           <AlertCircle size={18} />
+
           <span>{error}</span>
         </div>
       )}
@@ -359,7 +444,6 @@ function LockerTelemetry() {
       {/* SENSOR DASHBOARD */}
       {latest && (
         <>
-
           {/* SENSOR CARDS */}
           <div className="telemetry-grid">
 
@@ -376,7 +460,8 @@ function LockerTelemetry() {
               </div>
 
               <div className="telemetry-value">
-                {weight !== undefined && weight !== null
+                {weight !== undefined &&
+                weight !== null
                   ? `${Number(weight).toLocaleString()} g`
                   : "--"}
               </div>
@@ -454,9 +539,6 @@ function LockerTelemetry() {
                 {doorStatus.label}
               </span>
             </div>
-
-            
-
           </div>
 
           {/* ADDITIONAL INFORMATION */}
@@ -469,6 +551,7 @@ function LockerTelemetry() {
               <div className="telemetry-overview-card">
                 <div className="overview-heading">
                   <Package size={20} />
+
                   <span>Locker Fill Level</span>
                 </div>
 
@@ -506,6 +589,7 @@ function LockerTelemetry() {
               <div className="telemetry-overview-card">
                 <div className="overview-heading">
                   <BatteryCharging size={20} />
+
                   <span>Power Mode</span>
                 </div>
 
@@ -525,6 +609,7 @@ function LockerTelemetry() {
               <div className="telemetry-overview-card">
                 <div className="overview-heading">
                   <Clock size={20} />
+
                   <span>Last Update</span>
                 </div>
 
@@ -537,7 +622,6 @@ function LockerTelemetry() {
 
                 <p>Latest telemetry received</p>
               </div>
-
             </div>
           </div>
 
@@ -555,7 +639,7 @@ function LockerTelemetry() {
               <table className="telemetry-table">
                 <thead>
                   <tr>
-                    <th>Date & Time</th>
+                    <th>Date &amp; Time</th>
                     <th>Weight</th>
                     <th>Lock</th>
                     <th>Door</th>
@@ -652,10 +736,8 @@ function LockerTelemetry() {
               </table>
             </div>
           </div>
-
         </>
       )}
-
     </div>
   );
 }
