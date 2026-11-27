@@ -1,11 +1,15 @@
-
 import { useEffect, useState, useCallback } from "react";
 
 import {
   getPairedLockers,
   getLockerTelemetry,
-  refreshLockerTelemetry,
 } from "../services/telemetryService";
+
+import {
+  startMaintenance,
+  stopMaintenance,
+  requestDeviceStatus,
+} from "../services/locker";
 
 import {
   Activity,
@@ -21,6 +25,10 @@ import {
   Clock,
   BatteryCharging,
   AlertCircle,
+  Wrench,
+  Square,
+  Play,
+  LoaderCircle,
 } from "lucide-react";
 
 function LockerTelemetry() {
@@ -33,8 +41,19 @@ function LockerTelemetry() {
   const [error, setError] = useState("");
 
   // ======================================
+  // MAINTENANCE MODE STATE
+  // ======================================
+
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  const [maintenanceError, setMaintenanceError] = useState("");
+  const [maintenanceMessage, setMaintenanceMessage] = useState("");
+  const [maintenanceData, setMaintenanceData] = useState(null);
+  const [deviceMode, setDeviceMode] = useState("UNKNOWN");
+
+  // ======================================
   // GET PAIRED LOCKERS
   // ======================================
+
   const loadLockers = useCallback(async () => {
     try {
       const data = await getPairedLockers();
@@ -46,8 +65,7 @@ function LockerTelemetry() {
         if (
           previous &&
           devices.some(
-            (locker) =>
-              locker.device_uuid === previous
+            (locker) => locker.device_uuid === previous
           )
         ) {
           return previous;
@@ -77,6 +95,7 @@ function LockerTelemetry() {
   // ======================================
   // GET LOCKER TELEMETRY HISTORY
   // ======================================
+
   const loadTelemetry = useCallback(
     async (deviceUuid) => {
       if (!deviceUuid) {
@@ -107,6 +126,7 @@ function LockerTelemetry() {
   // ======================================
   // INITIAL LOADING
   // ======================================
+
   useEffect(() => {
     const initialize = async () => {
       setLoading(true);
@@ -120,52 +140,28 @@ function LockerTelemetry() {
   }, [loadLockers]);
 
   // ======================================
-  // REQUEST LIVE TELEMETRY WHEN LOCKER CHANGES
+  // LOAD TELEMETRY WHEN LOCKER CHANGES
   // ======================================
+
   useEffect(() => {
     if (!selectedLocker) {
       setTelemetry([]);
+      setMaintenanceData(null);
+      setDeviceMode("UNKNOWN");
       return;
     }
 
-    let cancelled = false;
+    setMaintenanceData(null);
+    setMaintenanceMessage("");
+    setMaintenanceError("");
 
-    const initializeTelemetry = async () => {
-      try {
-        setError("");
-
-        // Request a new sensor reading from ESP32
-        await refreshLockerTelemetry(selectedLocker);
-
-        if (cancelled) return;
-
-        // Get latest telemetry records
-        await loadTelemetry(selectedLocker);
-      } catch (err) {
-        if (cancelled) return;
-
-        console.error(
-          "Initialize telemetry error:",
-          err
-        );
-
-        setError(
-          err.message ||
-            "Unable to request live telemetry."
-        );
-      }
-    };
-
-    initializeTelemetry();
-
-    return () => {
-      cancelled = true;
-    };
+    loadTelemetry(selectedLocker);
   }, [selectedLocker, loadTelemetry]);
 
   // ======================================
   // AUTO-REFRESH TELEMETRY EVERY 3 SECONDS
   // ======================================
+
   useEffect(() => {
     if (!selectedLocker) return;
 
@@ -179,6 +175,7 @@ function LockerTelemetry() {
   // ======================================
   // MANUAL REFRESH
   // ======================================
+
   const handleRefresh = async () => {
     setRefreshing(true);
     setError("");
@@ -200,10 +197,8 @@ function LockerTelemetry() {
         return;
       }
 
-      // Request a fresh reading from ESP32
-      await refreshLockerTelemetry(targetUuid);
-
-      // Fetch latest telemetry history
+      // Fetch existing telemetry from the backend.
+      // This does not automatically enter maintenance mode.
       await loadTelemetry(targetUuid);
 
       if (targetUuid !== selectedLocker) {
@@ -213,8 +208,7 @@ function LockerTelemetry() {
       console.error("Refresh telemetry error:", err);
 
       setError(
-        err.message ||
-          "Unable to refresh telemetry."
+        err.message || "Unable to refresh telemetry."
       );
     } finally {
       setRefreshing(false);
@@ -222,8 +216,108 @@ function LockerTelemetry() {
   };
 
   // ======================================
+  // START MAINTENANCE MODE - MQTT
+  // ======================================
+
+  const handleStartMaintenance = async () => {
+    if (!selectedLocker) {
+      setMaintenanceError("Please select a paired locker.");
+      return;
+    }
+
+    try {
+      setMaintenanceLoading(true);
+      setMaintenanceError("");
+      setMaintenanceMessage("");
+      setMaintenanceData(null);
+
+      const response = await startMaintenance();
+
+      setMaintenanceData(response);
+      setDeviceMode("MAINTENANCE");
+
+      setMaintenanceMessage(
+        "Maintenance mode started successfully."
+      );
+
+      // Request the current device mode after receiving
+      // the maintenance response.
+      try {
+        const status = await requestDeviceStatus();
+
+        setDeviceMode(
+          String(status).trim().toUpperCase()
+        );
+      } catch (statusError) {
+        console.warn(
+          "Unable to retrieve device status:",
+          statusError
+        );
+      }
+    } catch (err) {
+      console.error("Start maintenance error:", err);
+
+      setMaintenanceError(
+        err.message || "Unable to start maintenance mode."
+      );
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  };
+
+  // ======================================
+  // STOP MAINTENANCE MODE - MQTT
+  // ======================================
+
+  const handleStopMaintenance = async () => {
+    if (!selectedLocker) {
+      setMaintenanceError("Please select a paired locker.");
+      return;
+    }
+
+    try {
+      setMaintenanceLoading(true);
+      setMaintenanceError("");
+      setMaintenanceMessage("");
+      setMaintenanceData(null);
+
+      const response = await stopMaintenance();
+
+      setMaintenanceData(response);
+
+      setMaintenanceMessage(
+        "Maintenance mode stopped successfully."
+      );
+
+      try {
+        const status = await requestDeviceStatus();
+
+        setDeviceMode(
+          String(status).trim().toUpperCase()
+        );
+      } catch (statusError) {
+        console.warn(
+          "Unable to retrieve device status:",
+          statusError
+        );
+
+        setDeviceMode("UNKNOWN");
+      }
+    } catch (err) {
+      console.error("Stop maintenance error:", err);
+
+      setMaintenanceError(
+        err.message || "Unable to stop maintenance mode."
+      );
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  };
+
+  // ======================================
   // LATEST TELEMETRY
   // ======================================
+
   const latest =
     telemetry.length > 0 ? telemetry[0] : null;
 
@@ -232,6 +326,7 @@ function LockerTelemetry() {
   // ======================================
   // SENSOR VALUES
   // ======================================
+
   const weight = payload.object_weight_g;
   const fillPercent = payload.box_fill_percent;
   const isLocked = payload.solenoid_locked;
@@ -241,6 +336,7 @@ function LockerTelemetry() {
   // ======================================
   // ULTRASONIC DISTANCE
   // ======================================
+
   const distance =
     payload.ultrasonic_distance_cm ??
     payload.distance_cm ??
@@ -253,6 +349,7 @@ function LockerTelemetry() {
   // ======================================
   // FORMAT DATE
   // ======================================
+
   const formatDate = (date) => {
     if (!date) return "--";
 
@@ -271,6 +368,7 @@ function LockerTelemetry() {
   // ======================================
   // STATUS HELPER
   // ======================================
+
   const getStatus = (
     value,
     trueLabel,
@@ -310,6 +408,7 @@ function LockerTelemetry() {
   // ======================================
   // LOADING SCREEN
   // ======================================
+
   if (loading) {
     return (
       <div className="telemetry-page">
@@ -328,10 +427,12 @@ function LockerTelemetry() {
   // ======================================
   // MAIN PAGE
   // ======================================
+
   return (
     <div className="telemetry-page">
 
       {/* PAGE HEADER */}
+
       <div className="telemetry-header">
         <div>
           <h1>Locker Telemetry</h1>
@@ -358,6 +459,7 @@ function LockerTelemetry() {
       </div>
 
       {/* LOCKER SELECTOR */}
+
       <div className="telemetry-toolbar">
         <div className="telemetry-device-selector">
           <label htmlFor="locker-select">
@@ -404,15 +506,16 @@ function LockerTelemetry() {
       </div>
 
       {/* ERROR */}
+
       {error && (
         <div className="telemetry-error">
           <AlertCircle size={18} />
-
           <span>{error}</span>
         </div>
       )}
 
       {/* NO PAIRED LOCKERS */}
+
       {lockers.length === 0 && (
         <div className="telemetry-empty">
           <Package size={45} />
@@ -426,7 +529,152 @@ function LockerTelemetry() {
         </div>
       )}
 
+      {/* MAINTENANCE CONTROL */}
+
+      {lockers.length > 0 && (
+        <div className="telemetry-section maintenance-section">
+          <div className="telemetry-section-header">
+            <h2>Maintenance Mode</h2>
+
+            <span
+              className={`telemetry-status ${
+                deviceMode === "MAINTENANCE"
+                  ? "status-warning"
+                  : deviceMode === "NORMAL"
+                  ? "status-success"
+                  : "status-unknown"
+              }`}
+            >
+              {deviceMode}
+            </span>
+          </div>
+
+          <p>
+            Manually start maintenance mode to retrieve raw
+            sensor readings from the locker.
+          </p>
+
+          <div className="maintenance-actions">
+            <button
+              type="button"
+              className="telemetry-refresh-btn"
+              onClick={handleStartMaintenance}
+              disabled={maintenanceLoading || !selectedLocker}
+            >
+              {maintenanceLoading ? (
+                <LoaderCircle
+                  size={17}
+                  className="spin"
+                />
+              ) : (
+                <Play size={17} />
+              )}
+
+              Start Maintenance
+            </button>
+
+            <button
+              type="button"
+              className="telemetry-refresh-btn"
+              onClick={handleStopMaintenance}
+              disabled={maintenanceLoading || !selectedLocker}
+            >
+              {maintenanceLoading ? (
+                <LoaderCircle
+                  size={17}
+                  className="spin"
+                />
+              ) : (
+                <Square size={17} />
+              )}
+
+              Stop Maintenance
+            </button>
+          </div>
+
+          {maintenanceMessage && (
+            <div className="telemetry-maintenance-success">
+              <Activity size={17} />
+              <span>{maintenanceMessage}</span>
+            </div>
+          )}
+
+          {maintenanceError && (
+            <div className="telemetry-error">
+              <AlertCircle size={18} />
+              <span>{maintenanceError}</span>
+            </div>
+          )}
+
+          {/* RAW MAINTENANCE RESPONSE */}
+
+          {maintenanceData && (
+            <div className="maintenance-readings">
+              <h3>Raw Sensor Readings</h3>
+
+              <div className="telemetry-overview-grid">
+                <div className="telemetry-overview-card">
+                  <div className="overview-heading">
+                    <Activity size={20} />
+                    <span>Raw Ultrasonic</span>
+                  </div>
+
+                  <div className="fill-percentage">
+                    {maintenanceData.raw_ultrasonic ?? "--"}
+                  </div>
+                </div>
+
+                <div className="telemetry-overview-card">
+                  <div className="overview-heading">
+                    <Scale size={20} />
+                    <span>Raw Load Cell</span>
+                  </div>
+
+                  <div className="fill-percentage">
+                    {maintenanceData.raw_loadcell ?? "--"}
+                  </div>
+                </div>
+
+                <div className="telemetry-overview-card">
+                  <div className="overview-heading">
+                    <DoorClosed size={20} />
+                    <span>Reed Switch</span>
+                  </div>
+
+                  <div className="fill-percentage">
+                    {maintenanceData.reed_switch ?? "--"}
+                  </div>
+                </div>
+
+                <div className="telemetry-overview-card">
+                  <div className="overview-heading">
+                    <Wifi size={20} />
+                    <span>Master Status</span>
+                  </div>
+
+                  <div className="fill-percentage">
+                    {maintenanceData.master_status ?? "--"}
+                  </div>
+                </div>
+
+                <div className="telemetry-overview-card">
+                  <div className="overview-heading">
+                    <Wifi size={20} />
+                    <span>Slave Status</span>
+                  </div>
+
+                  <div className="fill-percentage">
+                    {maintenanceData.slave_status ?? "--"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* NO TELEMETRY */}
+
       {lockers.length > 0 &&
         telemetry.length === 0 &&
         !error && (
@@ -442,12 +690,15 @@ function LockerTelemetry() {
         )}
 
       {/* SENSOR DASHBOARD */}
+
       {latest && (
         <>
           {/* SENSOR CARDS */}
+
           <div className="telemetry-grid">
 
             {/* WEIGHT */}
+
             <div className="telemetry-card">
               <div className="telemetry-card-header">
                 <div className="telemetry-icon weight-icon">
@@ -479,6 +730,7 @@ function LockerTelemetry() {
             </div>
 
             {/* SOLENOID LOCK */}
+
             <div className="telemetry-card">
               <div className="telemetry-card-header">
                 <div className="telemetry-icon lock-icon">
@@ -510,6 +762,7 @@ function LockerTelemetry() {
             </div>
 
             {/* REED SWITCH */}
+
             <div className="telemetry-card">
               <div className="telemetry-card-header">
                 <div className="telemetry-icon door-icon">
@@ -542,12 +795,14 @@ function LockerTelemetry() {
           </div>
 
           {/* ADDITIONAL INFORMATION */}
+
           <div className="telemetry-section">
             <h2>Locker Overview</h2>
 
             <div className="telemetry-overview-grid">
 
               {/* FILL LEVEL */}
+
               <div className="telemetry-overview-card">
                 <div className="overview-heading">
                   <Package size={20} />
@@ -586,6 +841,7 @@ function LockerTelemetry() {
               </div>
 
               {/* POWER SAVING */}
+
               <div className="telemetry-overview-card">
                 <div className="overview-heading">
                   <BatteryCharging size={20} />
@@ -605,7 +861,26 @@ function LockerTelemetry() {
                 <p>ESP32 power-saving mode</p>
               </div>
 
+              {/* ULTRASONIC DISTANCE */}
+
+              <div className="telemetry-overview-card">
+                <div className="overview-heading">
+                  <Activity size={20} />
+
+                  <span>Ultrasonic Distance</span>
+                </div>
+
+                <div className="fill-percentage">
+                  {distance !== null
+                    ? `${distance} cm`
+                    : "--"}
+                </div>
+
+                <p>Measured object distance</p>
+              </div>
+
               {/* LAST UPDATE */}
+
               <div className="telemetry-overview-card">
                 <div className="overview-heading">
                   <Clock size={20} />
@@ -626,6 +901,7 @@ function LockerTelemetry() {
           </div>
 
           {/* TELEMETRY HISTORY */}
+
           <div className="telemetry-section">
             <div className="telemetry-section-header">
               <h2>Telemetry History</h2>

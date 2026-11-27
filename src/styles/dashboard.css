@@ -1,14 +1,14 @@
 
 /* =========================================================
-   DASHBOARD - FIXED STYLES
-   Compatible with the latest Dashboard.jsx
+   DROPORA DASHBOARD - FULL RESPONSIVE CSS
+   Preserves existing theme colors and design
 ========================================================= */
 
 /* MAIN PAGE */
 
 .dashboard-page {
   min-height: 100vh;
-  padding-bottom: 50px;
+  padding-bottom: 30px;
   background: var(--bg);
   color: var(--text);
   box-sizing: border-box;
@@ -20,7 +20,9 @@
   box-sizing: border-box;
 }
 
-/* HEADER */
+/* =========================================================
+   HEADER
+========================================================= */
 
 .dashboard-page .header {
   width: 100%;
@@ -35,6 +37,7 @@
 
 .dashboard-page .header h1 {
   margin: 0;
+  color: var(--text);
   font-size: 24px;
   font-weight: 700;
 }
@@ -43,12 +46,15 @@
   margin: 6px 0 0;
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.5;
 }
 
 .header-controls {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 15px;
+  margin-left: auto;
   flex-shrink: 0;
 }
 
@@ -58,6 +64,7 @@
   gap: 7px;
   color: var(--muted);
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .online-status svg {
@@ -70,6 +77,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   border: none;
   border-radius: 13px;
   color: var(--primary);
@@ -90,16 +98,17 @@
   cursor: not-allowed;
 }
 
-/* DASHBOARD CONTAINER */
+/* =========================================================
+   DASHBOARD CONTAINER
+========================================================= */
 
 .dashboard {
   width: 94%;
   max-width: 1500px;
+  min-width: 0;
   margin: 0 auto;
   padding: 35px 0 50px;
 }
-
-/* WELCOME */
 
 .dashboard-welcome {
   margin-bottom: 30px;
@@ -107,9 +116,9 @@
 
 .dashboard-welcome h2 {
   margin: 0;
+  color: var(--text);
   font-size: clamp(26px, 3vw, 36px);
   font-weight: 700;
-  color: var(--text);
 }
 
 .dashboard-welcome p {
@@ -119,10 +128,13 @@
   line-height: 1.6;
 }
 
-/* MAIN GRID */
+/* =========================================================
+   DASHBOARD GRID
+========================================================= */
 
 .dashboard-grid {
   width: 100%;
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   align-items: stretch;
@@ -130,7 +142,28 @@
   margin: 0;
 }
 
-/* SHARED CARDS */
+.dashboard-bottom-grid {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 24px;
+}
+
+.dashboard-bottom-grid .locker-section,
+.dashboard-bottom-grid .history-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 450px;
+  height: 100%;
+  margin: 0;
+}
+
+/* =========================================================
+   SHARED CARDS
+========================================================= */
 
 .locker-card,
 .history-card {
@@ -139,12 +172,11 @@
   padding: 28px;
   border-radius: 24px;
   background: var(--card-bg, var(--bg));
+  color: var(--text);
   box-shadow:
     8px 8px 16px var(--dark-shadow),
     -8px -8px 16px var(--light-shadow);
 }
-
-/* CARD HEADER */
 
 .dashboard-page .card-header {
   display: flex;
@@ -169,7 +201,9 @@
   letter-spacing: 0.14em;
 }
 
-/* LOCKER ONLINE STATUS */
+/* =========================================================
+   LOCKER STATUS
+========================================================= */
 
 .dashboard-page .locker-online {
   display: flex;
@@ -198,10 +232,13 @@
   box-shadow: 0 0 8px rgba(220, 53, 69, 0.4);
 }
 
-/* LOCKER VISUAL */
+/* =========================================================
+   LOCKER VISUAL
+========================================================= */
 
 .locker-visual {
   width: 100%;
+  min-width: 0;
   min-height: 260px;
   padding: 30px 15px;
   display: flex;
@@ -217,6 +254,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   border-radius: 28px;
   color: var(--primary);
   background: var(--bg);
@@ -240,7 +278,9 @@
   line-height: 1.5;
 }
 
-/* LOCK / UNLOCK BUTTON */
+/* =========================================================
+   LOCK / UNLOCK BUTTONS
+========================================================= */
 
 .dashboard-page .locker-button {
   width: 100%;
@@ -277,10 +317,13 @@
   flex-shrink: 0;
 }
 
-/* SLEEP MODE */
+/* =========================================================
+   SLEEP MODE
+========================================================= */
 
 .power-mode-control {
   width: 100%;
+  min-width: 0;
   margin-top: 25px;
   padding: 20px;
   border: 1px solid var(--border);
@@ -325,7 +368,9 @@
   margin-top: 18px;
 }
 
-/* COMMAND FEEDBACK */
+/* =========================================================
+   COMMAND FEEDBACK
+========================================================= */
 
 .control-success,
 .control-error {
@@ -337,6 +382,7 @@
   border-radius: 12px;
   font-size: 12px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .control-success {
@@ -355,10 +401,13 @@
   margin-top: 1px;
 }
 
-/* TELEMETRY */
+/* =========================================================
+   TELEMETRY
+========================================================= */
 
 .locker-telemetry-summary {
   width: 100%;
+  min-width: 0;
   margin-top: 25px;
   padding: 15px 18px;
   border: 1px solid var(--border);
@@ -389,6 +438,7 @@
   font-size: 13px;
   font-weight: 700;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .telemetry-refreshing {
@@ -401,9 +451,12 @@
   font-size: 12px;
 }
 
-/* REFRESH ANIMATION */
+/* =========================================================
+   REFRESH ANIMATION
+========================================================= */
 
-.refresh-spin {
+.refresh-spin,
+.dashboard-spin {
   animation: dashboard-spin 1s linear infinite;
 }
 
@@ -417,7 +470,9 @@
   }
 }
 
-/* HISTORY CARD */
+/* =========================================================
+   DELIVERY HISTORY
+========================================================= */
 
 .history-card {
   display: flex;
@@ -447,10 +502,9 @@
   opacity: 0.75;
 }
 
-/* HISTORY LIST */
-
 .history-list {
   width: 100%;
+  min-width: 0;
   margin-top: 10px;
 }
 
@@ -489,29 +543,26 @@
 }
 
 .history-info strong {
-  overflow: hidden;
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .history-info span {
-  overflow: hidden;
   color: var(--muted);
   font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .history-info small {
   color: var(--muted);
   font-size: 10px;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
-/* HISTORY STATUS */
+/* DELIVERY STATUS */
 
 .history-status {
   flex-shrink: 0;
@@ -560,7 +611,7 @@
   font-size: 13px;
 }
 
-/* REGISTER DELIVERY BUTTON */
+/* REGISTER DELIVERY */
 
 .dashboard-page .scan-button {
   width: 100%;
@@ -588,10 +639,162 @@
   transform: translateY(-2px);
 }
 
-/* RESPONSIVE TABLET */
+/* =========================================================
+   SLEEP HISTORY TABLE
+========================================================= */
+
+.sleep-history-card {
+  width: 100%;
+  min-width: 0;
+  margin-top: 24px;
+  padding: 24px;
+  background: var(--card-bg, var(--bg));
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow:
+    6px 6px 12px var(--dark-shadow),
+    -6px -6px 12px var(--light-shadow);
+}
+
+.sleep-history-card .card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.sleep-history-subtitle {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sleep-history-refresh,
+.sleep-history-load-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sleep-history-refresh:hover,
+.sleep-history-load-more:hover {
+  background: rgba(207, 65, 151, 0.08);
+}
+
+.sleep-history-refresh:disabled,
+.sleep-history-load-more:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sleep-history-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.sleep-history-table {
+  width: 100%;
+  min-width: 580px;
+  border-collapse: collapse;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+
+.sleep-history-table th,
+.sleep-history-table td {
+  padding: 14px 15px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.sleep-history-table th {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.sleep-history-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sleep-history-table td {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.sleep-event-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sleep-history-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 22px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.sleep-history-error {
+  color: #dc3545;
+}
+
+.sleep-history-error button {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.sleep-history-load-more {
+  display: flex;
+  margin: 16px auto 0;
+}
+
+/* =========================================================
+   RESPONSIVE TABLET
+========================================================= */
 
 @media (max-width: 1000px) {
   .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-bottom-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -601,16 +804,30 @@
   }
 
   .history-card {
-    min-height: 400px;
+    min-height: 350px;
+  }
+
+  .dashboard-bottom-grid .locker-section,
+  .dashboard-bottom-grid .history-card {
+    min-height: 0;
+    height: auto;
   }
 }
 
-/* RESPONSIVE MOBILE */
+/* =========================================================
+   RESPONSIVE MOBILE
+========================================================= */
 
-@media (max-width: 650px) {
+@media (max-width: 750px) {
+  .dashboard-page {
+    padding-bottom: 0;
+  }
+
   .dashboard-page .header {
     min-height: 70px;
     padding: 15px 5%;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
   .dashboard-page .header h1 {
@@ -622,7 +839,7 @@
   }
 
   .header-controls {
-    gap: 10px;
+    gap: 8px;
   }
 
   .online-status {
@@ -652,7 +869,13 @@
   }
 
   .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
+  }
+
+  .dashboard-bottom-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
   }
 
   .locker-card,
@@ -704,11 +927,223 @@
   .dashboard-page .scan-button {
     margin-top: 20px;
   }
+
+  /* Sleep history mobile card */
+
+  .sleep-history-card {
+    margin-top: 18px;
+    padding: 17px;
+  }
+
+  .sleep-history-card .card-header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .sleep-history-subtitle {
+    font-size: 12px;
+  }
+
+  /* Mobile table becomes stacked rows */
+
+  .sleep-history-table-wrap {
+    border: none;
+    overflow: visible;
+  }
+
+  .sleep-history-table {
+    width: 100%;
+    min-width: 0;
+    display: block;
+    font-size: 12px;
+  }
+
+  .sleep-history-table thead {
+    display: none;
+  }
+
+  .sleep-history-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .sleep-history-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+  }
+
+  .sleep-history-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+  }
+
+  .sleep-history-table td:last-child {
+    border-bottom: none;
+  }
+
+  .sleep-history-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: left;
+    flex: 0 0 88px;
+  }
+
+  /* Bottom navigation compatibility */
+
+  .dashboard-body {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .dashboard-sidebar {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+
+    padding: 7px 8px;
+    padding-bottom: max(7px, env(safe-area-inset-bottom));
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 4px;
+
+    border-right: none;
+    border-top: 1px solid var(--border);
+    box-sizing: border-box;
+    background: var(--card);
+  }
+
+  .sidebar-brand,
+  .sidebar-label {
+    display: none;
+  }
+
+  .sidebar-navigation {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .sidebar-spacer {
+    display: none;
+  }
+
+  .sidebar-link {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 54px;
+    height: 54px;
+
+    padding: 5px 2px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    font-size: 10px;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .sidebar-link svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-link span {
+    display: block;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .sidebar-logout,
+  .sidebar-delete-account {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 54px;
+    height: 54px;
+    margin: 0;
+    padding: 5px 2px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    font-size: 10px;
+  }
+
+  .dashboard-page-content {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    padding-bottom: 85px;
+  }
+
+  .dashboard-body > .dashboard {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
+    padding: 22px 16px 100px;
+  }
 }
 
-/* VERY SMALL MOBILE */
+/* =========================================================
+   SMALL PHONES
+========================================================= */
 
-@media (max-width: 380px) {
+@media (max-width: 480px) {
+  .dashboard {
+    width: 92%;
+    padding: 18px 0 35px;
+  }
+
+  .dashboard-page .header {
+    padding: 14px 4%;
+  }
+
+  .dashboard-page .header h1 {
+    font-size: 19px;
+  }
+
+  .dashboard-welcome h2 {
+    font-size: 24px;
+  }
+
   .locker-card,
   .history-card {
     padding: 16px;
@@ -733,16 +1168,79 @@
   .history-info span {
     font-size: 10px;
   }
+
+  .sleep-history-card {
+    padding: 13px;
+  }
+
+  .sleep-history-refresh {
+    padding: 8px 9px;
+    font-size: 12px;
+  }
+
+  .sleep-history-table td::before {
+    flex-basis: 76px;
+  }
+
+  .dashboard-page .header {
+    align-items: flex-start;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+
+  .online-status {
+    font-size: 11px;
+  }
+
+  .dashboard-sidebar {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .sidebar-link,
+  .sidebar-link span {
+    font-size: 9px;
+  }
+
+  .dashboard-lockers-section {
+    padding: 14px;
+  }
+
+  .dashboard-section-heading h2 {
+    font-size: 18px;
+  }
+
+  .dashboard-pair-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-locker-item {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .dashboard-locker-status {
+    padding-left: 58px;
+  }
 }
 
-/* ACCESSIBILITY */
+/* =========================================================
+   ACCESSIBILITY
+========================================================= */
 
 .dashboard-page button:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
 
-/* REDUCED MOTION */
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
   .dashboard-page *,
@@ -753,20 +1251,50 @@
     transition-duration: 0.01ms !important;
   }
 }
-.dashboard-bottom-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+/* Locker and Parcel History side by side */
+.dashboard-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 24px;
   width: 100%;
+  align-items: stretch;
 }
 
-.dashboard-bottom-grid .locker-section,
-.dashboard-bottom-grid .history-card {
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-  min-height: 450px;
-  height: 100%;
-  margin: 0;
+/* Equal width for the top two cards */
+.dashboard-grid > .locker-card,
+.dashboard-grid > .history-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
   box-sizing: border-box;
+}
+
+/* Sleep History below both cards */
+.dashboard-grid > .sleep-history-card {
+  grid-column: 1 / -1;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Keep sleep table inside its card */
+.sleep-history-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Mobile: stack all three */
+@media (max-width: 750px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px;
+  }
+
+  .dashboard-grid > .sleep-history-card {
+    grid-column: auto;
+  }
 }
