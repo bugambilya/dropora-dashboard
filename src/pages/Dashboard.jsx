@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -7,20 +8,17 @@ import {
   Clock3,
   XCircle,
   Lock,
-  Unlock,
   ChevronRight,
   Moon,
   LoaderCircle,
-  Radio,
   RefreshCw,
-  MessageSquare,
 } from "lucide-react";
 
 import {
   sendRemoteCommand,
   startMaintenance,
   stopMaintenance,
-  requestDeviceStatus,
+  requestDeviceMode,
   normalizeDeviceMode,
   subscribeMqttEvents,
   connectLockerMqtt,
@@ -56,8 +54,6 @@ function Dashboard({ darkMode }) {
   const [controlError, setControlError] = useState("");
   const [controlMessage, setControlMessage] = useState("");
 
-  // Remote request selections. Clicking a row changes the requested
-  // state; the Send Remote Request button sends both selected values.
   const [remoteDraft, setRemoteDraft] = useState({
     doorLocked: null,
     powerSaving: null,
@@ -177,6 +173,7 @@ function Dashboard({ darkMode }) {
       } catch (error) {
         if (active) {
           console.error("MQTT initialization error:", error);
+
           addMqttLog("error", {
             message: error.message || "Unable to connect to MQTT.",
           });
@@ -192,7 +189,7 @@ function Dashboard({ darkMode }) {
   }, [deviceUuid, addMqttLog]);
 
   // ======================================
-  // DEVICE STATUS
+  // DEVICE MODE
   // ======================================
 
   const applyDeviceStatus = useCallback((response) => {
@@ -209,6 +206,10 @@ function Dashboard({ darkMode }) {
     }
   }, []);
 
+  // ======================================
+  // REQUEST DEVICE MODE
+  // ======================================
+
   const handleRequestStatus = async () => {
     if (!deviceUuid) {
       setMqttStatusError("Please pair a locker first.");
@@ -224,7 +225,8 @@ function Dashboard({ darkMode }) {
         payload: {},
       });
 
-      const response = await requestDeviceStatus();
+      const response = await requestDeviceMode();
+
       applyDeviceStatus(response);
 
       addMqttLog("success", {
@@ -246,6 +248,10 @@ function Dashboard({ darkMode }) {
     }
   };
 
+  // ======================================
+  // INITIAL DEVICE MODE REQUEST
+  // ======================================
+
   useEffect(() => {
     if (!deviceUuid) return;
 
@@ -253,7 +259,7 @@ function Dashboard({ darkMode }) {
 
     const requestInitialStatus = async () => {
       try {
-        const response = await requestDeviceStatus();
+        const response = await requestDeviceMode();
 
         if (active) {
           applyDeviceStatus(response);
@@ -273,7 +279,7 @@ function Dashboard({ darkMode }) {
   }, [deviceUuid, applyDeviceStatus]);
 
   // ======================================
-  // FETCH TELEMETRY
+  // FETCH SAVED TELEMETRY
   // ======================================
 
   const fetchTelemetry = useCallback(async () => {
@@ -334,6 +340,7 @@ function Dashboard({ darkMode }) {
       if (typeof latestPayload.power_saving === "boolean") {
         setDeviceMode((currentMode) => {
           if (currentMode === "MAINTENANCE") return currentMode;
+
           return latestPayload.power_saving ? "SLEEP" : "NORMAL";
         });
       }
@@ -356,6 +363,7 @@ function Dashboard({ darkMode }) {
     fetchTelemetry();
 
     const interval = setInterval(fetchTelemetry, 3000);
+
     return () => clearInterval(interval);
   }, [deviceUuid, fetchTelemetry]);
 
@@ -381,6 +389,7 @@ function Dashboard({ darkMode }) {
     async (offset = 0, append = false) => {
       if (!deviceUuid) {
         setSleepEvents([]);
+
         setSleepPagination({
           offset: 0,
           limit: 10,
@@ -388,6 +397,7 @@ function Dashboard({ darkMode }) {
           has_more: false,
           next_offset: null,
         });
+
         return;
       }
 
@@ -408,7 +418,9 @@ function Dashboard({ darkMode }) {
         setSleepEvents((previous) => {
           if (!append) return events;
 
-          const existingIds = new Set(previous.map((event) => event.id));
+          const existingIds = new Set(
+            previous.map((event) => event.id)
+          );
 
           return [
             ...previous,
@@ -440,6 +452,7 @@ function Dashboard({ darkMode }) {
     if (!deviceUuid) {
       setSleepEvents([]);
       setSleepError("");
+
       setSleepPagination({
         offset: 0,
         limit: 10,
@@ -447,6 +460,7 @@ function Dashboard({ darkMode }) {
         has_more: false,
         next_offset: null,
       });
+
       return;
     }
 
@@ -463,6 +477,7 @@ function Dashboard({ darkMode }) {
     if (!date) return "—";
 
     const parsed = new Date(date);
+
     if (Number.isNaN(parsed.getTime())) return "—";
 
     return parsed.toLocaleString(undefined, {
@@ -483,13 +498,18 @@ function Dashboard({ darkMode }) {
       return "In progress";
     }
 
-    const totalSeconds = Math.max(0, Math.floor(Number(seconds)));
+    const totalSeconds = Math.max(
+      0,
+      Math.floor(Number(seconds))
+    );
+
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const remainingSeconds = totalSeconds % 60;
 
     if (hours > 0) return `${hours}h ${minutes}m`;
     if (minutes > 0) return `${minutes}m ${remainingSeconds}s`;
+
     return `${remainingSeconds}s`;
   };
 
@@ -508,7 +528,9 @@ function Dashboard({ darkMode }) {
   const fillPercent = payload.box_fill_percent;
 
   const isLocked =
-    lockOverride !== null ? lockOverride : solenoidLocked === true;
+    lockOverride !== null
+      ? lockOverride
+      : solenoidLocked === true;
 
   const displayedPowerSaving =
     powerSavingOverride !== null
@@ -571,7 +593,10 @@ function Dashboard({ darkMode }) {
 
       setLockOverride(requestedLock);
       setPowerSavingOverride(requestedSleep);
-      setDeviceMode(requestedSleep ? "SLEEP" : "NORMAL");
+
+      setDeviceMode(
+        requestedSleep ? "SLEEP" : "NORMAL"
+      );
 
       setRemoteDraft({
         doorLocked: null,
@@ -579,21 +604,25 @@ function Dashboard({ darkMode }) {
       });
 
       setControlMessage(
-        data?.message || "Remote request acknowledged by the device."
+        data?.message ||
+          "Remote request acknowledged by the device."
       );
 
       addMqttLog("request", {
         topic: "remote_req",
         payload: {
-          door_locked: requestedLock,
-          power_saving: requestedSleep,
+          lock: requestedLock ? "locked" : "unlocked",
+          sleep: requestedSleep ? "on" : "off",
         },
       });
 
       fetchTelemetry();
     } catch (error) {
       console.error("Remote request error:", error);
-      setControlError(error.message || "Unable to send remote request.");
+
+      setControlError(
+        error.message || "Unable to send remote request."
+      );
 
       addMqttLog("error", {
         message: error.message || "Remote request failed.",
@@ -621,7 +650,10 @@ function Dashboard({ darkMode }) {
       const data = await startMaintenance(deviceUuid);
 
       setDeviceMode("MAINTENANCE");
-      setControlMessage(data?.message || "Maintenance mode started.");
+
+      setControlMessage(
+        data?.message || "Maintenance mode started."
+      );
 
       addMqttLog("request", {
         topic: "maintenance_req",
@@ -629,7 +661,10 @@ function Dashboard({ darkMode }) {
       });
     } catch (error) {
       console.error("Maintenance start error:", error);
-      setControlError(error.message || "Unable to start maintenance mode.");
+
+      setControlError(
+        error.message || "Unable to start maintenance mode."
+      );
     } finally {
       setIsChangingMode(false);
     }
@@ -649,7 +684,10 @@ function Dashboard({ darkMode }) {
       const data = await stopMaintenance(deviceUuid);
 
       setDeviceMode("NORMAL");
-      setControlMessage(data?.message || "Maintenance mode stopped.");
+
+      setControlMessage(
+        data?.message || "Maintenance mode stopped."
+      );
 
       addMqttLog("request", {
         topic: "maintenance_req",
@@ -657,7 +695,10 @@ function Dashboard({ darkMode }) {
       });
     } catch (error) {
       console.error("Maintenance stop error:", error);
-      setControlError(error.message || "Unable to stop maintenance mode.");
+
+      setControlError(
+        error.message || "Unable to stop maintenance mode."
+      );
     } finally {
       setIsChangingMode(false);
     }
@@ -691,7 +732,11 @@ function Dashboard({ darkMode }) {
       setParcelHistory(sortedDeliveries.slice(0, 4));
     } catch (error) {
       console.error("Dashboard parcel history error:", error);
-      setHistoryError(error.message || "Unable to load parcel history.");
+
+      setHistoryError(
+        error.message || "Unable to load parcel history."
+      );
+
       setParcelHistory([]);
     } finally {
       setHistoryLoading(false);
@@ -706,7 +751,10 @@ function Dashboard({ darkMode }) {
     if (!date) return "Date unavailable";
 
     const parsedDate = new Date(date);
-    if (Number.isNaN(parsedDate.getTime())) return "Date unavailable";
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Date unavailable";
+    }
 
     return parsedDate.toLocaleDateString("en-US", {
       month: "short",
@@ -716,12 +764,23 @@ function Dashboard({ darkMode }) {
   };
 
   const getParcelStatus = (parcel) => {
-    const status = String(parcel.status || "to_receive").toLowerCase();
+    const status = String(
+      parcel.status || "to_receive"
+    ).toLowerCase();
 
     const statusConfig = {
-      to_receive: { label: "Ready for Collection", type: "ready" },
-      received: { label: "Collected", type: "collected" },
-      cancelled: { label: "Cancelled", type: "cancelled" },
+      to_receive: {
+        label: "Ready for Collection",
+        type: "ready",
+      },
+      received: {
+        label: "Collected",
+        type: "collected",
+      },
+      cancelled: {
+        label: "Cancelled",
+        type: "cancelled",
+      },
     };
 
     return (
@@ -746,10 +805,13 @@ function Dashboard({ darkMode }) {
       ? "reconnecting"
       : "disconnected";
 
-  const clearMqttMessages = () => setMqttMessages([]);
+  const clearMqttMessages = () => {
+    setMqttMessages([]);
+  };
 
   const formatMqttMessage = (message) => {
     if (typeof message === "string") return message;
+
     return JSON.stringify(message, null, 2);
   };
 
@@ -760,6 +822,7 @@ function Dashboard({ darkMode }) {
   return (
     <div className={`dropora-dashboard ${darkMode ? "dark" : ""}`}>
       <div className="dropora-shell">
+
         {/* HEADER */}
 
         <header className="dropora-header">
@@ -775,7 +838,9 @@ function Dashboard({ darkMode }) {
           </span>
         </header>
 
-        <h1 className="dropora-title">Smart Locker Dashboard</h1>
+        <h1 className="dropora-title">
+          Smart Locker Dashboard
+        </h1>
 
         {/* STATUS CARDS */}
 
@@ -822,7 +887,9 @@ function Dashboard({ darkMode }) {
             onClick={toggleRequestedLock}
             disabled={!deviceUuid || isControlling || isChangingMode}
           >
-            <span>{requestedLock ? "Lock" : "Unlock"}</span>
+            <span>
+              {requestedLock ? "Lock" : "Unlock"}
+            </span>
 
             <span
               className={`dropora-state-pill ${
@@ -839,7 +906,9 @@ function Dashboard({ darkMode }) {
             onClick={toggleRequestedSleep}
             disabled={!deviceUuid || isControlling || isChangingMode}
           >
-            <span>{requestedSleep ? "Sleep" : "Normal Mode"}</span>
+            <span>
+              {requestedSleep ? "Sleep" : "Normal Mode"}
+            </span>
 
             <span
               className={`dropora-state-pill ${
@@ -974,6 +1043,7 @@ function Dashboard({ darkMode }) {
 
           <div className="dropora-mqtt-footer">
             <span className={`dropora-mqtt-dot ${mqttStatusClass}`} />
+
             {mqttConnection === "CONNECTED"
               ? "Connected to Maqiatto"
               : mqttConnection === "CONNECTING" ||
@@ -992,7 +1062,9 @@ function Dashboard({ darkMode }) {
           mqttStatusError) && (
           <section className="dropora-feedback">
             {controlMessage && (
-              <p className="dropora-feedback-success">{controlMessage}</p>
+              <p className="dropora-feedback-success">
+                {controlMessage}
+              </p>
             )}
 
             {[
@@ -1003,7 +1075,10 @@ function Dashboard({ darkMode }) {
             ]
               .filter(Boolean)
               .map((message, index) => (
-                <p className="dropora-feedback-error" key={index}>
+                <p
+                  className="dropora-feedback-error"
+                  key={index}
+                >
                   {message}
                 </p>
               ))}
@@ -1016,7 +1091,9 @@ function Dashboard({ darkMode }) {
           <div className="dropora-section-heading">
             <div>
               <h2>Device Details</h2>
-              <p>Latest information reported by your locker.</p>
+              <p>
+                Latest information reported by your locker.
+              </p>
             </div>
 
             <button
@@ -1037,6 +1114,7 @@ function Dashboard({ darkMode }) {
           <div className="dropora-details-grid">
             <div>
               <span>Door Status</span>
+
               <strong>
                 {doorClosed === true
                   ? "Closed"
@@ -1048,6 +1126,7 @@ function Dashboard({ darkMode }) {
 
             <div>
               <span>Object Weight</span>
+
               <strong>
                 {weight !== undefined && weight !== null
                   ? `${weight} g`
@@ -1057,6 +1136,7 @@ function Dashboard({ darkMode }) {
 
             <div>
               <span>Box Fill Level</span>
+
               <strong>
                 {fillPercent !== undefined && fillPercent !== null
                   ? `${fillPercent}%`
@@ -1066,6 +1146,7 @@ function Dashboard({ darkMode }) {
 
             <div>
               <span>Device Mode</span>
+
               <strong>
                 {deviceMode === "MAINTENANCE"
                   ? "Maintenance"
@@ -1090,7 +1171,9 @@ function Dashboard({ darkMode }) {
             onClick={handleRequestStatus}
             disabled={!deviceUuid || mqttStatusLoading}
           >
-            {mqttStatusLoading ? "Requesting..." : "Request Device Status"}
+            {mqttStatusLoading
+              ? "Requesting..."
+              : "Request Device Status"}
           </button>
         </section>
 
@@ -1114,10 +1197,13 @@ function Dashboard({ darkMode }) {
           </div>
 
           {historyLoading ? (
-            <p className="dropora-history-message">Loading parcel history...</p>
+            <p className="dropora-history-message">
+              Loading parcel history...
+            </p>
           ) : historyError ? (
             <div className="dropora-history-message">
               <p>{historyError}</p>
+
               <button
                 type="button"
                 className="dropora-small-button"
@@ -1140,7 +1226,10 @@ function Dashboard({ darkMode }) {
                 const statusInfo = getParcelStatus(parcel);
 
                 return (
-                  <div className="dropora-parcel-item" key={parcel.id}>
+                  <div
+                    className="dropora-parcel-item"
+                    key={parcel.id}
+                  >
                     <div className="dropora-parcel-icon">
                       <Package size={19} />
                     </div>
@@ -1167,6 +1256,7 @@ function Dashboard({ darkMode }) {
                       ) : (
                         <Clock3 size={14} />
                       )}
+
                       {statusInfo.label}
                     </span>
                   </div>
@@ -1182,7 +1272,9 @@ function Dashboard({ darkMode }) {
           <div className="dropora-section-heading">
             <div>
               <h2>Sleep History</h2>
-              <p>Records when your locker entered and exited sleep mode.</p>
+              <p>
+                Records when your locker entered and exited sleep mode.
+              </p>
             </div>
 
             <button
@@ -1207,6 +1299,7 @@ function Dashboard({ darkMode }) {
           ) : sleepError ? (
             <div className="dropora-history-message">
               <p>{sleepError}</p>
+
               <button
                 type="button"
                 className="dropora-small-button"
@@ -1274,7 +1367,8 @@ function Dashboard({ darkMode }) {
               onClick={() =>
                 fetchSleepEvents(
                   sleepPagination.next_offset ??
-                    sleepPagination.offset + sleepPagination.limit,
+                    sleepPagination.offset +
+                      sleepPagination.limit,
                   true
                 )
               }

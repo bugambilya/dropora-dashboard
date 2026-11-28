@@ -10,11 +10,8 @@ const BROKER =
   import.meta.env.VITE_MQTT_BROKER ||
   "wss://maqiatto.com:4883";
 
-const MQTT_USERNAME =
-  import.meta.env.VITE_MQTT_USERNAME;
-
-const MQTT_PASSWORD =
-  import.meta.env.VITE_MQTT_PASSWORD;
+const MQTT_USERNAME = import.meta.env.VITE_MQTT_USERNAME;
+const MQTT_PASSWORD = import.meta.env.VITE_MQTT_PASSWORD;
 
 const DEVICE =
   import.meta.env.VITE_MQTT_DEVICE_TOPIC_ROOT ||
@@ -31,7 +28,7 @@ const TOPICS = {
 };
 
 // ======================================
-// MQTT CLIENT
+// MQTT CLIENT STATE
 // ======================================
 
 let mqttClient = null;
@@ -39,19 +36,121 @@ let connectionPromise = null;
 let subscriptionPromise = null;
 
 const pendingRequests = [];
+const mqttListeners = new Set();
+
+// ======================================
+// MQTT EVENT SYSTEM
+// ======================================
+
+const emitMqttEvent = (event) => {
+  mqttListeners.forEach((listener) => {
+    try {
+      listener(event);
+    } catch (error) {
+      console.error("MQTT event listener error:", error);
+    }
+  });
+};
+
+export const subscribeMqttEvents = (callback) => {
+  if (typeof callback !== "function") {
+    throw new Error("MQTT event listener must be a function.");
+  }
+
+  mqttListeners.add(callback);
+
+  return () => {
+    mqttListeners.delete(callback);
+  };
+};
 
 // ======================================
 // PARSE MQTT MESSAGE
 // ======================================
 
 const parseMessage = (message) => {
-  const text = message.toString();
+  const raw = message.toString().trim();
 
   try {
-    return JSON.parse(text);
+    return JSON.parse(raw);
   } catch {
-    return text;
+    return raw;
   }
+};
+
+// ======================================
+// DEVICE MODE NORMALIZER
+// ======================================
+
+export const normalizeDeviceMode = (response) => {
+  let mode = response;
+
+  if (response && typeof response === "object") {
+    mode =
+      response.mode ??
+      response.device_mode ??
+      response.status ??
+      response.power_mode ??
+      response.message;
+  }
+
+  if (typeof mode !== "string") {
+    return null;
+  }
+
+  const normalized = mode.trim().toUpperCase();
+
+  if (
+    ["NORMAL", "SLEEP", "MAINTENANCE"].includes(normalized)
+  ) {
+    return normalized;
+  }
+
+  return null;
+};
+
+// ======================================
+// TELEMETRY RESPONSE VALIDATION
+// ======================================
+
+const hasTelemetryFields = (response) => {
+  if (
+    !response ||
+    typeof response !== "object" ||
+    Array.isArray(response)
+  ) {
+    return false;
+  }
+
+  const payload =
+    response.payload &&
+    typeof response.payload === "object"
+      ? response.payload
+      : response.data &&
+        typeof response.data === "object"
+      ? response.data
+      : response.telemetry &&
+        typeof response.telemetry === "object"
+      ? response.telemetry
+      : response;
+
+  const recognizedFields = [
+    "object_weight_g",
+    "box_fill_percent",
+    "solenoid_locked",
+    "door_closed",
+    "power_saving",
+    "ultrasonic_distance_cm",
+    "distance_cm",
+    "proximity_distance_cm",
+    "proximity_cm",
+    "object_distance_cm",
+    "distance",
+  ];
+
+  return recognizedFields.some((field) =>
+    Object.prototype.hasOwnProperty.call(payload, field)
+  );
 };
 
 // ======================================
@@ -59,21 +158,46 @@ const parseMessage = (message) => {
 // ======================================
 
 const handleMqttMessage = (topic, message) => {
+  const raw = message.toString().trim();
   const response = parseMessage(message);
 
-  console.log("MQTT RESPONSE:", topic, response);
+  console.log("--------------------------------");
+  console.log("MQTT RESPONSE TOPIC:", topic);
+  console.log("MQTT RAW RESPONSE:", raw);
+  console.log("MQTT PARSED RESPONSE:", response);
+  console.log("MQTT RESPONSE TYPE:", typeof response);
+  console.log("--------------------------------");
+
+  emitMqttEvent({
+    type: "message",
+    topic,
+    data: response,
+    raw,
+  });
 
   const requestIndex = pendingRequests.findIndex(
-    (request) =>
-      request.responseTopic === topic &&
-      request.matches(response)
+    (request) => {
+      if (request.responseTopic !== topic) {
+        return false;
+      }
+
+      try {
+        return request.matches(response);
+      } catch (error) {
+        console.error("MQTT response matcher error:", error);
+        return false;
+      }
+    }
   );
 
-  if (requestIndex === -1) return;
+  if (requestIndex === -1) {
+    return;
+  }
 
   const request = pendingRequests.splice(requestIndex, 1)[0];
 
   clearTimeout(request.timeout);
+
   request.resolve(response);
 };
 
@@ -117,6 +241,11 @@ const ensureConnected = () => {
   }
 
   if (!mqttClient) {
+    emitMqttEvent({
+      type: "connection",
+      status: "CONNECTING",
+    });
+
     mqttClient = mqtt.connect(BROKER, {
       username: MQTT_USERNAME,
       password: MQTT_PASSWORD,
@@ -130,8 +259,29 @@ const ensureConnected = () => {
 
     mqttClient.on("message", handleMqttMessage);
 
+    mqttClient.on("connect", () => {
+      console.log("MQTT connected to Maqiatto.");
+
+      emitMqttEvent({
+        type: "connection",
+        status: "CONNECTED",
+      });
+
+      emitMqttEvent({
+        type: "log",
+        message: "Connected to Maqiatto MQTT broker.",
+      });
+    });
+
     mqttClient.on("close", () => {
+      console.warn("MQTT connection closed.");
+
       subscriptionPromise = null;
+
+      emitMqttEvent({
+        type: "connection",
+        status: "DISCONNECTED",
+      });
 
       rejectPendingRequests(
         "MQTT connection was interrupted. Please try again."
@@ -140,14 +290,29 @@ const ensureConnected = () => {
 
     mqttClient.on("error", (error) => {
       console.error("MQTT connection error:", error);
+
+      emitMqttEvent({
+        type: "error",
+        message: error.message || "MQTT connection error.",
+      });
     });
 
     mqttClient.on("offline", () => {
       console.warn("MQTT client is offline.");
+
+      emitMqttEvent({
+        type: "connection",
+        status: "DISCONNECTED",
+      });
     });
 
     mqttClient.on("reconnect", () => {
       console.log("Reconnecting to MQTT...");
+
+      emitMqttEvent({
+        type: "connection",
+        status: "RECONNECTING",
+      });
     });
   }
 
@@ -199,20 +364,43 @@ const ensureSubscribed = async () => {
     client.subscribe(
       responseTopics,
       { qos: 1 },
-      (error) => {
+      (error, granted) => {
         if (error) {
           subscriptionPromise = null;
           reject(error);
           return;
         }
 
-        console.log("Subscribed to MQTT response topics.");
-        resolve();
+        console.log("Subscribed to MQTT response topics:", granted);
+
+        emitMqttEvent({
+          type: "log",
+          message: "Subscribed to MQTT response topics.",
+          data: responseTopics,
+        });
+
+        resolve(granted);
       }
     );
   });
 
   return subscriptionPromise;
+};
+
+// ======================================
+// PUBLIC MQTT INITIALIZATION
+// ======================================
+
+export const connectLockerMqtt = async () => {
+  await ensureSubscribed();
+
+  return {
+    success: true,
+    connected: Boolean(mqttClient?.connected),
+    broker: BROKER,
+    device: DEVICE,
+    topics: TOPICS,
+  };
 };
 
 // ======================================
@@ -234,8 +422,7 @@ const publishAndWait = async ({
 
   if (
     pendingRequests.some(
-      (request) =>
-        request.responseTopic === responseTopic
+      (request) => request.responseTopic === responseTopic
     )
   ) {
     throw new Error(
@@ -261,7 +448,7 @@ const publishAndWait = async ({
 
       reject(
         new Error(
-          `No response received from device on ${responseTopic}.`
+          `No valid response received from device on ${responseTopic}.`
         )
       );
     }, timeoutMs);
@@ -275,6 +462,16 @@ const publishAndWait = async ({
       (error) => {
         if (!error) {
           console.log("MQTT REQUEST:", requestTopic, payload);
+
+          emitMqttEvent({
+            type: "log",
+            message: "MQTT request published.",
+            data: {
+              topic: requestTopic,
+              payload,
+            },
+          });
+
           return;
         }
 
@@ -421,7 +618,8 @@ export const stopMaintenance = () => {
 };
 
 // ======================================
-// REQUEST DEVICE STATUS - MQTT
+// REQUEST DEVICE TELEMETRY - MQTT
+// Expects JSON sensor readings
 // ======================================
 
 export const requestDeviceStatus = () => {
@@ -431,10 +629,28 @@ export const requestDeviceStatus = () => {
 
     payload: {},
 
+    matches: hasTelemetryFields,
+
+    timeoutMs: 15000,
+  });
+};
+
+// ======================================
+// REQUEST DEVICE MODE - MQTT
+// Expects NORMAL / SLEEP / MAINTENANCE
+// ======================================
+
+export const requestDeviceMode = () => {
+  return publishAndWait({
+    requestTopic: TOPICS.status_req,
+    responseTopic: TOPICS.status_res,
+
+    payload: {},
+
     matches: (response) =>
-      ["NORMAL", "SLEEP", "MAINTENANCE"].includes(
-        String(response).trim().toUpperCase()
-      ),
+      normalizeDeviceMode(response) !== null,
+
+    timeoutMs: 10000,
   });
 };
 
@@ -462,6 +678,16 @@ export const getRemoteCommands = (
 };
 
 // ======================================
+// MQTT CONNECTION STATUS
+// ======================================
+
+export const getMqttConnectionStatus = () => {
+  return mqttClient?.connected
+    ? "CONNECTED"
+    : "DISCONNECTED";
+};
+
+// ======================================
 // DISCONNECT MQTT
 // ======================================
 
@@ -475,4 +701,9 @@ export const disconnectLockerMqtt = () => {
 
   connectionPromise = null;
   subscriptionPromise = null;
+
+  emitMqttEvent({
+    type: "connection",
+    status: "DISCONNECTED",
+  });
 };
