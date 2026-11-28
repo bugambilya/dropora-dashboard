@@ -1179,98 +1179,81 @@
 
 
 /* =========================================
-   MOBILE SIDEBAR - LEFT SIDE
+   MOBILE BOTTOM NAVIGATION FIX
    Keeps existing colors
 ========================================= */
 
 @media (max-width: 750px) {
-  .dashboard-body {
-    display: flex;
-    align-items: stretch;
-    min-height: 100vh;
-  }
-
-  /* Sidebar stays on the left */
-
   .dashboard-sidebar {
-    position: sticky;
-    top: 0;
-    left: auto;
-    right: auto;
-    bottom: auto;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    right: 0;
+    bottom: 0;
 
-    flex: 0 0 75px;
-    width: 75px;
-    min-width: 75px;
-    max-width: 75px;
-
-    height: 100vh;
-    min-height: 100vh;
-
-    padding: 15px 8px;
+    top: auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
 
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    justify-content: flex-start;
 
-    overflow-x: hidden;
-    overflow-y: auto;
+    gap: 4px;
+    padding: 6px 8px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
 
-    border-top: none;
-    border-right: 1px solid var(--border);
-
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
     box-sizing: border-box;
   }
 
-  /* Hide brand text and show only the icon */
-
-  .sidebar-brand {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 25px;
-  }
-
-  .sidebar-brand-icon {
-    width: 42px;
-    height: 42px;
-  }
-
-  .sidebar-brand-text {
+  .sidebar-brand,
+  .sidebar-label,
+  .sidebar-spacer {
     display: none;
   }
 
-  .sidebar-label {
-    display: none;
-  }
-
-  /* Vertical navigation */
+  /* Allow navigation links and account buttons
+     to share the same horizontal scrolling row */
 
   .sidebar-navigation {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 6px;
+    display: contents;
   }
 
-  .sidebar-link {
-    width: 100%;
-    min-width: 0;
-    min-height: 58px;
-    height: auto;
+  .sidebar-link,
+  .sidebar-logout,
+  .sidebar-delete-account {
+    flex: 0 0 70px;
 
-    padding: 8px 2px;
+    width: 70px;
+    min-width: 70px;
+    max-width: 70px;
+
+    height: 60px;
+    min-height: 60px;
+
+    margin: 0;
+    padding: 5px 2px;
 
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 4px;
 
-    gap: 5px;
-    font-size: 9px;
+    box-sizing: border-box;
     text-align: center;
+    white-space: normal;
   }
 
-  .sidebar-link svg {
+  .sidebar-link svg,
+  .sidebar-logout svg,
+  .sidebar-delete-account svg {
     width: 20px;
     height: 20px;
     flex-shrink: 0;
@@ -1279,97 +1262,35 @@
   .sidebar-link span {
     display: block;
     width: 100%;
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.2;
     text-align: center;
     overflow-wrap: anywhere;
   }
 
-  .sidebar-spacer {
-    flex: 1;
-    min-height: 15px;
-  }
-
-  /* Logout and delete account */
-
   .sidebar-logout,
   .sidebar-delete-account {
-    width: 100%;
-    min-width: 0;
-    min-height: 58px;
-    height: auto;
-
-    margin: 5px 0 0;
-    padding: 8px 2px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    gap: 5px;
-    font-size: 9px;
-    text-align: center;
+    font-size: 10px;
+    line-height: 1.2;
   }
 
-  .sidebar-logout svg,
-  .sidebar-delete-account svg {
-    width: 20px;
-    height: 20px;
+  /* Hide scrollbar but keep scrolling */
+
+  .dashboard-sidebar::-webkit-scrollbar {
+    display: none;
   }
 
-  /* Main content beside sidebar */
-
-  .dashboard-page-content {
-    flex: 1;
-    width: 0;
-    min-width: 0;
-    padding: 12px;
-    padding-bottom: 20px;
-  }
-
-  .dashboard-body > .dashboard {
-    width: 100%;
-    min-width: 0;
-    padding: 20px 12px;
-  }
-
-  /* Stack dashboard cards */
-
-  .dashboard-bottom-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-  }
-
-  .dashboard-bottom-grid .locker-section,
-  .dashboard-bottom-grid .history-card {
-    width: 100%;
-    min-width: 0;
-    min-height: 0;
-    height: auto;
-  }
-
-  .dashboard-lockers-section {
-    padding: 14px;
-  }
-}
-
-/* Very small phones */
-
-@media (max-width: 380px) {
   .dashboard-sidebar {
-    flex-basis: 65px;
-    width: 65px;
-    min-width: 65px;
-    max-width: 65px;
-    padding: 12px 5px;
+    scrollbar-width: none;
+  }
+
+  /* Leave space above the fixed bottom navigation */
+
+  .pair-locker-page {
+    padding-bottom: 100px;
   }
 
   .dashboard-page-content {
-    padding: 8px;
-  }
-
-  .dashboard-body > .dashboard {
-    padding: 16px 8px;
+    padding-bottom: 85px;
   }
 }
