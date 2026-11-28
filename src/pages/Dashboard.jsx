@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -10,27 +9,29 @@ import {
   Lock,
   Unlock,
   ChevronRight,
-  ScanLine,
   Moon,
-  Sun,
   LoaderCircle,
-  BatteryCharging,
-  Wrench,
+  Radio,
+  RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 
 import {
   sendRemoteCommand,
   startMaintenance,
   stopMaintenance,
+  requestDeviceStatus,
+  normalizeDeviceMode,
+  subscribeMqttEvents,
+  connectLockerMqtt,
 } from "../services/locker";
-
 
 import { getDeliveries } from "../services/deliveryService";
 import { getSleepEvents } from "../services/sleepEventService";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
-function Dashboard({ darkMode, setDarkMode }) {
+function Dashboard({ darkMode }) {
   const navigate = useNavigate();
 
   // ======================================
@@ -50,11 +51,68 @@ function Dashboard({ darkMode, setDarkMode }) {
 
   const [powerSavingOverride, setPowerSavingOverride] = useState(null);
   const [lockOverride, setLockOverride] = useState(null);
-
   const [deviceMode, setDeviceMode] = useState("NORMAL");
 
   const [controlError, setControlError] = useState("");
   const [controlMessage, setControlMessage] = useState("");
+
+  // Remote request selections. Clicking a row changes the requested
+  // state; the Send Remote Request button sends both selected values.
+  const [remoteDraft, setRemoteDraft] = useState({
+    doorLocked: null,
+    powerSaving: null,
+  });
+
+  // ======================================
+  // MQTT STATE
+  // ======================================
+
+  const [mqttConnection, setMqttConnection] = useState("DISCONNECTED");
+  const [mqttMessages, setMqttMessages] = useState([]);
+  const [mqttStatusLoading, setMqttStatusLoading] = useState(false);
+  const [mqttStatusError, setMqttStatusError] = useState("");
+
+  const addMqttLog = useCallback((type, message) => {
+    const entry = {
+      id: `${Date.now()}-${Math.random()}`,
+      type,
+      message,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+
+    setMqttMessages((previous) => [entry, ...previous].slice(0, 30));
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeMqttEvents((event) => {
+      if (event.type === "connection") {
+        setMqttConnection(event.status);
+      }
+
+      if (event.type === "message") {
+        addMqttLog("response", {
+          topic: event.topic,
+          response: event.data,
+          raw: event.raw,
+        });
+      }
+
+      if (event.type === "log") {
+        addMqttLog("info", {
+          message: event.message,
+          data: event.data,
+        });
+      }
+
+      if (event.type === "error") {
+        addMqttLog("error", {
+          message: event.message,
+        });
+      }
+    });
+
+    return unsubscribe;
+  }, [addMqttLog]);
 
   // ======================================
   // FETCH PAIRED LOCKERS
@@ -68,41 +126,27 @@ function Dashboard({ darkMode, setDarkMode }) {
       const token = localStorage.getItem("accessToken");
 
       if (!token) {
-        throw new Error(
-          "Please log in to view your paired lockers."
-        );
+        throw new Error("Please log in to view your paired lockers.");
       }
 
-      const response = await fetch(
-        `${API_BASE}/api/locker/paired`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE}/api/locker/paired`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.error || "Unable to load paired lockers."
-        );
+        throw new Error(data.error || "Unable to load paired lockers.");
       }
 
-      setLockers(
-        Array.isArray(data.devices)
-          ? data.devices
-          : []
-      );
+      setLockers(Array.isArray(data.devices) ? data.devices : []);
     } catch (error) {
       console.error("Fetch lockers error:", error);
-
-      setLockersError(
-        error.message || "Unable to load lockers."
-      );
+      setLockersError(error.message || "Unable to load lockers.");
     } finally {
       setLockersLoading(false);
     }
@@ -113,6 +157,120 @@ function Dashboard({ darkMode, setDarkMode }) {
   }, [fetchLockers]);
 
   const deviceUuid = lockers[0]?.device_uuid;
+
+  // ======================================
+  // INITIALIZE MQTT
+  // ======================================
+
+  useEffect(() => {
+    if (!deviceUuid) return;
+
+    let active = true;
+
+    const initializeMqtt = async () => {
+      try {
+        const result = await connectLockerMqtt();
+
+        if (active) {
+          console.log("DROPORA MQTT initialized:", result);
+        }
+      } catch (error) {
+        if (active) {
+          console.error("MQTT initialization error:", error);
+          addMqttLog("error", {
+            message: error.message || "Unable to connect to MQTT.",
+          });
+        }
+      }
+    };
+
+    initializeMqtt();
+
+    return () => {
+      active = false;
+    };
+  }, [deviceUuid, addMqttLog]);
+
+  // ======================================
+  // DEVICE STATUS
+  // ======================================
+
+  const applyDeviceStatus = useCallback((response) => {
+    const mode = normalizeDeviceMode(response);
+
+    if (!mode) return;
+
+    setDeviceMode(mode);
+
+    if (mode === "SLEEP") {
+      setPowerSavingOverride(true);
+    } else if (mode === "NORMAL") {
+      setPowerSavingOverride(false);
+    }
+  }, []);
+
+  const handleRequestStatus = async () => {
+    if (!deviceUuid) {
+      setMqttStatusError("Please pair a locker first.");
+      return;
+    }
+
+    try {
+      setMqttStatusLoading(true);
+      setMqttStatusError("");
+
+      addMqttLog("request", {
+        topic: "status_req",
+        payload: {},
+      });
+
+      const response = await requestDeviceStatus();
+      applyDeviceStatus(response);
+
+      addMqttLog("success", {
+        message: "Device status received.",
+        response,
+      });
+    } catch (error) {
+      console.error("MQTT status request error:", error);
+
+      setMqttStatusError(
+        error.message || "Unable to retrieve device status."
+      );
+
+      addMqttLog("error", {
+        message: error.message || "Status request failed.",
+      });
+    } finally {
+      setMqttStatusLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!deviceUuid) return;
+
+    let active = true;
+
+    const requestInitialStatus = async () => {
+      try {
+        const response = await requestDeviceStatus();
+
+        if (active) {
+          applyDeviceStatus(response);
+        }
+      } catch (error) {
+        if (active) {
+          console.warn("Initial MQTT status request:", error.message);
+        }
+      }
+    };
+
+    requestInitialStatus();
+
+    return () => {
+      active = false;
+    };
+  }, [deviceUuid, applyDeviceStatus]);
 
   // ======================================
   // FETCH TELEMETRY
@@ -131,9 +289,7 @@ function Dashboard({ darkMode, setDarkMode }) {
       const token = localStorage.getItem("accessToken");
 
       if (!token) {
-        throw new Error(
-          "Please log in to view telemetry."
-        );
+        throw new Error("Please log in to view telemetry.");
       }
 
       const response = await fetch(
@@ -152,14 +308,14 @@ function Dashboard({ darkMode, setDarkMode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.error || "Unable to load telemetry data."
-        );
+        throw new Error(data.error || "Unable to load telemetry data.");
       }
 
-      const latestPayload = Array.isArray(data.telemetry)
-        ? data.telemetry[0]?.payload || {}
-        : {};
+      const records = Array.isArray(data.telemetry)
+        ? data.telemetry
+        : [];
+
+      const latestPayload = records[0]?.payload || {};
 
       setPowerSavingOverride((requestedMode) =>
         requestedMode !== null &&
@@ -175,30 +331,17 @@ function Dashboard({ darkMode, setDarkMode }) {
           : requestedLock
       );
 
-      // Update Sleep / Normal mode from telemetry
       if (typeof latestPayload.power_saving === "boolean") {
         setDeviceMode((currentMode) => {
-          if (currentMode === "MAINTENANCE") {
-            return currentMode;
-          }
-
-          return latestPayload.power_saving
-            ? "SLEEP"
-            : "NORMAL";
+          if (currentMode === "MAINTENANCE") return currentMode;
+          return latestPayload.power_saving ? "SLEEP" : "NORMAL";
         });
       }
 
-      setTelemetry(
-        Array.isArray(data.telemetry)
-          ? data.telemetry
-          : []
-      );
+      setTelemetry(records);
     } catch (error) {
       console.error("Fetch telemetry error:", error);
-
-      setTelemetryError(
-        error.message || "Unable to load telemetry."
-      );
+      setTelemetryError(error.message || "Unable to load telemetry.");
     } finally {
       setTelemetryLoading(false);
     }
@@ -212,16 +355,12 @@ function Dashboard({ darkMode, setDarkMode }) {
 
     fetchTelemetry();
 
-    const interval = setInterval(
-      fetchTelemetry,
-      3000
-    );
-
+    const interval = setInterval(fetchTelemetry, 3000);
     return () => clearInterval(interval);
   }, [deviceUuid, fetchTelemetry]);
 
   // ======================================
-  // SLEEP EVENT HISTORY
+  // SLEEP HISTORY
   // ======================================
 
   const [sleepEvents, setSleepEvents] = useState([]);
@@ -242,7 +381,6 @@ function Dashboard({ darkMode, setDarkMode }) {
     async (offset = 0, append = false) => {
       if (!deviceUuid) {
         setSleepEvents([]);
-
         setSleepPagination({
           offset: 0,
           limit: 10,
@@ -250,11 +388,9 @@ function Dashboard({ darkMode, setDarkMode }) {
           has_more: false,
           next_offset: null,
         });
-
         return;
       }
 
-      // Prevent overlapping requests.
       if (sleepRequestRef.current) return;
 
       sleepRequestRef.current = true;
@@ -263,11 +399,7 @@ function Dashboard({ darkMode, setDarkMode }) {
         setSleepLoading(true);
         setSleepError("");
 
-        const data = await getSleepEvents(
-          deviceUuid,
-          offset,
-          10
-        );
+        const data = await getSleepEvents(deviceUuid, offset, 10);
 
         const events = Array.isArray(data.sleep_events)
           ? data.sleep_events
@@ -276,15 +408,11 @@ function Dashboard({ darkMode, setDarkMode }) {
         setSleepEvents((previous) => {
           if (!append) return events;
 
-          const existingIds = new Set(
-            previous.map((event) => event.id)
-          );
+          const existingIds = new Set(previous.map((event) => event.id));
 
           return [
             ...previous,
-            ...events.filter(
-              (event) => !existingIds.has(event.id)
-            ),
+            ...events.filter((event) => !existingIds.has(event.id)),
           ];
         });
 
@@ -298,14 +426,8 @@ function Dashboard({ darkMode, setDarkMode }) {
           }
         );
       } catch (error) {
-        console.error(
-          "Fetch sleep history error:",
-          error
-        );
-
-        setSleepError(
-          error.message || "Unable to load sleep history."
-        );
+        console.error("Fetch sleep history error:", error);
+        setSleepError(error.message || "Unable to load sleep history.");
       } finally {
         sleepRequestRef.current = false;
         setSleepLoading(false);
@@ -318,7 +440,6 @@ function Dashboard({ darkMode, setDarkMode }) {
     if (!deviceUuid) {
       setSleepEvents([]);
       setSleepError("");
-
       setSleepPagination({
         offset: 0,
         limit: 10,
@@ -326,7 +447,6 @@ function Dashboard({ darkMode, setDarkMode }) {
         has_more: false,
         next_offset: null,
       });
-
       return;
     }
 
@@ -339,18 +459,11 @@ function Dashboard({ darkMode, setDarkMode }) {
     return () => clearInterval(interval);
   }, [deviceUuid, fetchSleepEvents]);
 
-  // ======================================
-  // SLEEP HISTORY FORMATTING
-  // ======================================
-
   const formatSleepDate = (date) => {
     if (!date) return "—";
 
     const parsed = new Date(date);
-
-    if (Number.isNaN(parsed.getTime())) {
-      return "—";
-    }
+    if (Number.isNaN(parsed.getTime())) return "—";
 
     return parsed.toLocaleString(undefined, {
       year: "numeric",
@@ -370,57 +483,67 @@ function Dashboard({ darkMode, setDarkMode }) {
       return "In progress";
     }
 
-    const totalSeconds = Math.max(
-      0,
-      Math.floor(Number(seconds))
-    );
-
+    const totalSeconds = Math.max(0, Math.floor(Number(seconds)));
     const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor(
-      (totalSeconds % 3600) / 60
-    );
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
     const remainingSeconds = totalSeconds % 60;
 
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-
-    if (minutes > 0) {
-      return `${minutes}m ${remainingSeconds}s`;
-    }
-
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${remainingSeconds}s`;
     return `${remainingSeconds}s`;
   };
 
   // ======================================
-  // LATEST TELEMETRY
+  // LATEST TELEMETRY VALUES
   // ======================================
 
   const latestTelemetry = telemetry[0];
   const payload = latestTelemetry?.payload || {};
 
-  const weight = payload.object_weight_g;
-  const fillPercent = payload.box_fill_percent;
-
   const solenoidLocked = payload.solenoid_locked;
   const doorClosed = payload.door_closed;
   const powerSaving = payload.power_saving;
 
+  const weight = payload.object_weight_g;
+  const fillPercent = payload.box_fill_percent;
+
   const isLocked =
-    lockOverride !== null
-      ? lockOverride
-      : solenoidLocked === true;
+    lockOverride !== null ? lockOverride : solenoidLocked === true;
 
   const displayedPowerSaving =
     powerSavingOverride !== null
       ? powerSavingOverride
       : powerSaving === true;
 
+  const requestedLock =
+    remoteDraft.doorLocked !== null
+      ? remoteDraft.doorLocked
+      : isLocked;
+
+  const requestedSleep =
+    remoteDraft.powerSaving !== null
+      ? remoteDraft.powerSaving
+      : displayedPowerSaving;
+
   // ======================================
-  // REMOTE DOOR LOCK CONTROL - MQTT
+  // REMOTE CONTROL
   // ======================================
 
-  const handleLockToggle = async () => {
+  const toggleRequestedLock = () => {
+    setRemoteDraft((previous) => ({
+      ...previous,
+      doorLocked: !requestedLock,
+    }));
+  };
+
+  const toggleRequestedSleep = () => {
+    setRemoteDraft((previous) => ({
+      ...previous,
+      powerSaving: !requestedSleep,
+    }));
+  };
+
+  const handleRemoteRequest = async () => {
     if (!deviceUuid) {
       setControlError("Please pair a locker first.");
       return;
@@ -428,11 +551,10 @@ function Dashboard({ darkMode, setDarkMode }) {
 
     if (
       typeof solenoidLocked !== "boolean" &&
-      lockOverride === null
+      lockOverride === null &&
+      remoteDraft.doorLocked === null
     ) {
-      setControlError(
-        "Waiting for valid locker lock telemetry."
-      );
+      setControlError("Waiting for valid locker lock telemetry.");
       return;
     }
 
@@ -443,48 +565,51 @@ function Dashboard({ darkMode, setDarkMode }) {
 
       const data = await sendRemoteCommand({
         deviceUuid,
-        doorLocked: !isLocked,
-        powerSaving: displayedPowerSaving,
+        doorLocked: requestedLock,
+        powerSaving: requestedSleep,
       });
 
-      setLockOverride(!isLocked);
+      setLockOverride(requestedLock);
+      setPowerSavingOverride(requestedSleep);
+      setDeviceMode(requestedSleep ? "SLEEP" : "NORMAL");
+
+      setRemoteDraft({
+        doorLocked: null,
+        powerSaving: null,
+      });
 
       setControlMessage(
-        data.message ||
-          "Door lock command confirmed by the device."
-      );
-    } catch (error) {
-      console.error(
-        "Remote door control error:",
-        error
+        data?.message || "Remote request acknowledged by the device."
       );
 
-      setControlError(
-        error.message ||
-          "Unable to send door lock command."
-      );
+      addMqttLog("request", {
+        topic: "remote_req",
+        payload: {
+          door_locked: requestedLock,
+          power_saving: requestedSleep,
+        },
+      });
+
+      fetchTelemetry();
+    } catch (error) {
+      console.error("Remote request error:", error);
+      setControlError(error.message || "Unable to send remote request.");
+
+      addMqttLog("error", {
+        message: error.message || "Remote request failed.",
+      });
     } finally {
       setIsControlling(false);
     }
   };
 
   // ======================================
-  // SLEEP LOCKER - MQTT
+  // MAINTENANCE CONTROL
   // ======================================
 
-  const handleSleep = async () => {
+  const handleMaintenanceStart = async () => {
     if (!deviceUuid) {
       setControlError("Please pair a locker first.");
-      return;
-    }
-
-    if (
-      typeof solenoidLocked !== "boolean" &&
-      lockOverride === null
-    ) {
-      setControlError(
-        "Waiting for valid locker lock telemetry."
-      );
       return;
     }
 
@@ -493,48 +618,26 @@ function Dashboard({ darkMode, setDarkMode }) {
       setControlError("");
       setControlMessage("");
 
-      const data = await sendRemoteCommand({
-        deviceUuid,
-        doorLocked: isLocked,
-        powerSaving: true,
+      const data = await startMaintenance(deviceUuid);
+
+      setDeviceMode("MAINTENANCE");
+      setControlMessage(data?.message || "Maintenance mode started.");
+
+      addMqttLog("request", {
+        topic: "maintenance_req",
+        payload: { action: "start" },
       });
-
-      setPowerSavingOverride(true);
-      setDeviceMode("SLEEP");
-
-      setControlMessage(
-        data.message ||
-          "Locker sleep command confirmed."
-      );
     } catch (error) {
-      console.error("Sleep command error:", error);
-
-      setControlError(
-        error.message ||
-          "Unable to put locker to sleep."
-      );
+      console.error("Maintenance start error:", error);
+      setControlError(error.message || "Unable to start maintenance mode.");
     } finally {
       setIsChangingMode(false);
     }
   };
 
-  // ======================================
-  // WAKE UP LOCKER - MQTT
-  // ======================================
-
-  const handleWakeUp = async () => {
+  const handleMaintenanceStop = async () => {
     if (!deviceUuid) {
       setControlError("Please pair a locker first.");
-      return;
-    }
-
-    if (
-      typeof solenoidLocked !== "boolean" &&
-      lockOverride === null
-    ) {
-      setControlError(
-        "Waiting for valid locker lock telemetry."
-      );
       return;
     }
 
@@ -543,73 +646,18 @@ function Dashboard({ darkMode, setDarkMode }) {
       setControlError("");
       setControlMessage("");
 
-      const data = await sendRemoteCommand({
-        deviceUuid,
-        doorLocked: isLocked,
-        powerSaving: false,
-      });
+      const data = await stopMaintenance(deviceUuid);
 
-      setPowerSavingOverride(false);
       setDeviceMode("NORMAL");
+      setControlMessage(data?.message || "Maintenance mode stopped.");
 
-      setControlMessage(
-        data.message ||
-          "Locker wake-up command confirmed."
-      );
+      addMqttLog("request", {
+        topic: "maintenance_req",
+        payload: { action: "stop" },
+      });
     } catch (error) {
-      console.error("Wake-up command error:", error);
-
-      setControlError(
-        error.message ||
-          "Unable to wake up locker."
-      );
-    } finally {
-      setIsChangingMode(false);
-    }
-  };
-
-  // ======================================
-  // MAINTENANCE MODE
-  // ======================================
-
-  const handleMaintenanceToggle = async () => {
-    if (!deviceUuid) {
-      setControlError("Please pair a locker first.");
-      return;
-    }
-
-    try {
-      setIsChangingMode(true);
-      setControlError("");
-      setControlMessage("");
-
-      if (deviceMode === "MAINTENANCE") {
-        const data = await stopMaintenance(deviceUuid);
-
-        setDeviceMode("NORMAL");
-
-        setControlMessage(
-          data.message || "Maintenance mode stopped."
-        );
-      } else {
-        const data = await startMaintenance(deviceUuid);
-
-        setDeviceMode("MAINTENANCE");
-
-        setControlMessage(
-          data.message || "Maintenance mode started."
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Maintenance command error:",
-        error
-      );
-
-      setControlError(
-        error.message ||
-          "Unable to change maintenance mode."
-      );
+      console.error("Maintenance stop error:", error);
+      setControlError(error.message || "Unable to stop maintenance mode.");
     } finally {
       setIsChangingMode(false);
     }
@@ -640,20 +688,10 @@ function Dashboard({ darkMode, setDarkMode }) {
           new Date(a.created_at || 0).getTime()
       );
 
-      setParcelHistory(
-        sortedDeliveries.slice(0, 4)
-      );
+      setParcelHistory(sortedDeliveries.slice(0, 4));
     } catch (error) {
-      console.error(
-        "Dashboard parcel history error:",
-        error
-      );
-
-      setHistoryError(
-        error.message ||
-          "Unable to load parcel history."
-      );
-
+      console.error("Dashboard parcel history error:", error);
+      setHistoryError(error.message || "Unable to load parcel history.");
       setParcelHistory([]);
     } finally {
       setHistoryLoading(false);
@@ -668,10 +706,7 @@ function Dashboard({ darkMode, setDarkMode }) {
     if (!date) return "Date unavailable";
 
     const parsedDate = new Date(date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-      return "Date unavailable";
-    }
+    if (Number.isNaN(parsedDate.getTime())) return "Date unavailable";
 
     return parsedDate.toLocaleDateString("en-US", {
       month: "short",
@@ -681,35 +716,41 @@ function Dashboard({ darkMode, setDarkMode }) {
   };
 
   const getParcelStatus = (parcel) => {
-    const status = String(
-      parcel.status || "to_receive"
-    ).toLowerCase();
+    const status = String(parcel.status || "to_receive").toLowerCase();
 
     const statusConfig = {
-      to_receive: {
-        label: "Ready for Collection",
-        type: "ready",
-      },
-      received: {
-        label: "Collected",
-        type: "collected",
-      },
-      cancelled: {
-        label: "Cancelled",
-        type: "cancelled",
-      },
+      to_receive: { label: "Ready for Collection", type: "ready" },
+      received: { label: "Collected", type: "collected" },
+      cancelled: { label: "Cancelled", type: "cancelled" },
     };
 
     return (
       statusConfig[status] || {
         label: status
           .replaceAll("_", " ")
-          .replace(/\b\w/g, (letter) =>
-            letter.toUpperCase()
-          ),
+          .replace(/\b\w/g, (letter) => letter.toUpperCase()),
         type: "ready",
       }
     );
+  };
+
+  // ======================================
+  // MQTT DISPLAY HELPERS
+  // ======================================
+
+  const mqttStatusClass =
+    mqttConnection === "CONNECTED"
+      ? "connected"
+      : mqttConnection === "RECONNECTING" ||
+        mqttConnection === "CONNECTING"
+      ? "reconnecting"
+      : "disconnected";
+
+  const clearMqttMessages = () => setMqttMessages([]);
+
+  const formatMqttMessage = (message) => {
+    if (typeof message === "string") return message;
+    return JSON.stringify(message, null, 2);
   };
 
   // ======================================
@@ -717,584 +758,533 @@ function Dashboard({ darkMode, setDarkMode }) {
   // ======================================
 
   return (
-    <div className="dashboard-page">
-      <header className="header">
-        <div className="header-controls">
-          <div className="online-status">
-            <span className="online-dot"></span>
-            Online
-          </div>
+    <div className={`dropora-dashboard ${darkMode ? "dark" : ""}`}>
+      <div className="dropora-shell">
+        {/* HEADER */}
 
-          <button
-            className="icon-button"
-            onClick={() => setDarkMode(!darkMode)}
-            aria-label="Toggle dark mode"
-          >
-            {darkMode ? (
-              <Sun size={19} />
-            ) : (
-              <Moon size={19} />
-            )}
-          </button>
-        </div>
-      </header>
+        <header className="dropora-header">
+          <div className="dropora-brand">DROPORA</div>
 
-      <main className="dashboard">
-        <section className="dashboard-welcome">
-          <div>
-            <p className="dashboard-eyebrow">
-              WELCOME TO
-            </p>
+          <span className={`dropora-connection ${mqttStatusClass}`}>
+            {mqttConnection === "CONNECTED"
+              ? "CONNECTED"
+              : mqttConnection === "CONNECTING" ||
+                mqttConnection === "RECONNECTING"
+              ? "CONNECTING"
+              : "DISCONNECTED"}
+          </span>
+        </header>
 
-            <h1>DROPORA</h1>
+        <h1 className="dropora-title">Smart Locker Dashboard</h1>
 
-            <p className="dashboard-welcome-subtitle">
-              Manage your parcels and smart lockers in one place.
-            </p>
-          </div>
+        {/* STATUS CARDS */}
+
+        <section className="dropora-status-grid">
+          <article className="dropora-status-card">
+            <Lock size={19} className="dropora-card-icon" />
+
+            <p>Locker Status</p>
+
+            <strong>
+              {typeof solenoidLocked !== "boolean" &&
+              lockOverride === null
+                ? "Waiting..."
+                : isLocked
+                ? "Locked"
+                : "Unlocked"}
+            </strong>
+          </article>
+
+          <article className="dropora-status-card">
+            <Moon size={20} className="dropora-card-icon" />
+
+            <p>Power Mode</p>
+
+            <strong>
+              {typeof powerSaving !== "boolean" &&
+              powerSavingOverride === null
+                ? "Waiting..."
+                : displayedPowerSaving
+                ? "Sleep"
+                : "Normal"}
+            </strong>
+          </article>
         </section>
 
-        <div className="dashboard-grid">
-          {/* LOCKER CARD */}
+        {/* REMOTE CONTROL */}
 
-          <section className="locker-card">
-            <div className="card-header">
-              <div>
-                <p className="card-eyebrow">
-                  YOUR LOCKER
-                </p>
+        <section className="dropora-panel">
+          <h2>Remote Control</h2>
 
-                <h2>Main Compartment</h2>
-              </div>
+          <button
+            type="button"
+            className="dropora-control-row"
+            onClick={toggleRequestedLock}
+            disabled={!deviceUuid || isControlling || isChangingMode}
+          >
+            <span>{requestedLock ? "Lock" : "Unlock"}</span>
 
-              <div className="locker-online">
-                <span></span>
+            <span
+              className={`dropora-state-pill ${
+                requestedLock ? "active" : "inactive"
+              }`}
+            >
+              {requestedLock ? "Locked" : "Unlocked"}
+            </span>
+          </button>
 
-                {lockersLoading
-                  ? "Loading..."
-                  : deviceUuid
-                  ? "Paired"
-                  : "Not Paired"}
-              </div>
-            </div>
+          <button
+            type="button"
+            className="dropora-control-row"
+            onClick={toggleRequestedSleep}
+            disabled={!deviceUuid || isControlling || isChangingMode}
+          >
+            <span>{requestedSleep ? "Sleep" : "Normal Mode"}</span>
 
-            <div className="locker-visual">
-              <div className="locker-icon">
-                {isLocked ? (
-                  <Lock size={42} />
-                ) : (
-                  <Unlock size={42} />
-                )}
-              </div>
+            <span
+              className={`dropora-state-pill ${
+                requestedSleep ? "active" : "inactive"
+              }`}
+            >
+              {requestedSleep ? "On" : "Off"}
+            </span>
+          </button>
 
-              <h3>
-                {typeof solenoidLocked !== "boolean" &&
-                lockOverride === null
-                  ? "Waiting for Telemetry"
-                  : isLocked
-                  ? "Locker Locked"
-                  : "Locker Unlocked"}
-              </h3>
+          <button
+            type="button"
+            className="dropora-send-button"
+            onClick={handleRemoteRequest}
+            disabled={
+              !deviceUuid ||
+              isControlling ||
+              isChangingMode ||
+              (typeof solenoidLocked !== "boolean" &&
+                lockOverride === null &&
+                remoteDraft.doorLocked === null)
+            }
+          >
+            {isControlling ? (
+              <>
+                <LoaderCircle size={17} className="spin" />
+                Sending Request...
+              </>
+            ) : (
+              "Send Remote Request"
+            )}
+          </button>
 
-              <p>
-                {doorClosed === true
-                  ? "The compartment door is closed."
-                  : doorClosed === false
-                  ? "The compartment door is open."
-                  : "Waiting for door status."}
-              </p>
-            </div>
+          {!deviceUuid && !lockersLoading && (
+            <p className="dropora-inline-message">
+              No paired locker. Pair your device to use remote control.
+            </p>
+          )}
+        </section>
 
-            {/* LOCK / UNLOCK */}
+        {/* MAINTENANCE CONTROL */}
+
+        <section className="dropora-panel">
+          <h2>Maintenance Control</h2>
+
+          <div className="dropora-maintenance-actions">
+            <button
+              type="button"
+              className="dropora-maintenance-start"
+              onClick={handleMaintenanceStart}
+              disabled={
+                !deviceUuid ||
+                isChangingMode ||
+                isControlling ||
+                deviceMode === "MAINTENANCE"
+              }
+            >
+              {isChangingMode && deviceMode !== "MAINTENANCE" ? (
+                <LoaderCircle size={17} className="spin" />
+              ) : (
+                "Start"
+              )}
+            </button>
 
             <button
               type="button"
-              className={`locker-button ${
-                isLocked
-                  ? "unlock-button"
-                  : "lock-button"
-              }`}
-              onClick={handleLockToggle}
+              className="dropora-maintenance-stop"
+              onClick={handleMaintenanceStop}
               disabled={
                 !deviceUuid ||
-                isControlling ||
                 isChangingMode ||
-                (typeof solenoidLocked !== "boolean" &&
-                  lockOverride === null)
+                isControlling ||
+                deviceMode !== "MAINTENANCE"
               }
             >
-              {isControlling ? (
-                <>
-                  <LoaderCircle
-                    size={18}
-                    className="spin"
-                  />
-                  Sending Command...
-                </>
-              ) : isLocked ? (
-                <>
-                  <Unlock size={18} />
-                  Unlock Locker
-                </>
+              {isChangingMode && deviceMode === "MAINTENANCE" ? (
+                <LoaderCircle size={17} className="spin" />
               ) : (
-                <>
-                  <Lock size={18} />
-                  Lock Locker
-                </>
+                "Stop"
               )}
             </button>
+          </div>
 
-            {/* SLEEP / WAKE / MAINTENANCE */}
+          {deviceMode === "MAINTENANCE" && (
+            <p className="dropora-inline-message">
+              Maintenance mode is active.
+            </p>
+          )}
+        </section>
 
-            <div className="power-mode-control">
-              <div>
-                <p className="card-eyebrow">
-                  DEVICE MODE
-                </p>
+        {/* MQTT ACTIVITY LOG */}
 
-                <h3>Locker Controls</h3>
+        <section className="dropora-panel dropora-mqtt-panel">
+          <div className="dropora-mqtt-heading">
+            <h2>MQTT Activity Log</h2>
 
-                <p>
-                  Current Mode:{" "}
-                  <strong>
-                    {deviceMode === "MAINTENANCE"
-                      ? "Maintenance"
-                      : deviceMode === "SLEEP"
-                      ? "Sleep"
-                      : "Normal"}
-                  </strong>
-                </p>
-              </div>
+            {mqttMessages.length > 0 && (
+              <button
+                type="button"
+                className="dropora-clear-log"
+                onClick={clearMqttMessages}
+              >
+                Clear
+              </button>
+            )}
+          </div>
 
-              <div className="device-mode-buttons">
-                {/* SLEEP */}
-
-                <button
-                  type="button"
-                  className="locker-button lock-button"
-                  onClick={handleSleep}
-                  disabled={
-                    !deviceUuid ||
-                    isChangingMode ||
-                    isControlling ||
-                    deviceMode === "SLEEP"
-                  }
+          <div className="dropora-mqtt-log">
+            {mqttMessages.length === 0 ? (
+              <>
+                <p>Connected to Maqiatto</p>
+                <p>Subscribed to response topics</p>
+                <p>Waiting for device responses...</p>
+              </>
+            ) : (
+              mqttMessages.map((entry) => (
+                <div
+                  className={`dropora-log-entry ${entry.type}`}
+                  key={entry.id}
                 >
-                  {isChangingMode ? (
-                    <>
-                      <LoaderCircle
-                        size={18}
-                        className="spin"
-                      />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Moon size={18} />
-                      Sleep
-                    </>
-                  )}
-                </button>
+                  <span className="dropora-log-time">
+                    {entry.timestamp}
+                  </span>
 
-                {/* WAKE UP */}
+                  <span className="dropora-log-message">
+                    {formatMqttMessage(entry.message)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
 
-                <button
-                  type="button"
-                  className="locker-button unlock-button"
-                  onClick={handleWakeUp}
-                  disabled={
-                    !deviceUuid ||
-                    isChangingMode ||
-                    isControlling ||
-                    deviceMode === "NORMAL"
-                  }
-                >
-                  {isChangingMode ? (
-                    <>
-                      <LoaderCircle
-                        size={18}
-                        className="spin"
-                      />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Sun size={18} />
-                      Wake Up
-                    </>
-                  )}
-                </button>
+          <div className="dropora-mqtt-footer">
+            <span className={`dropora-mqtt-dot ${mqttStatusClass}`} />
+            {mqttConnection === "CONNECTED"
+              ? "Connected to Maqiatto"
+              : mqttConnection === "CONNECTING" ||
+                mqttConnection === "RECONNECTING"
+              ? "Connecting to Maqiatto..."
+              : "MQTT disconnected"}
+          </div>
+        </section>
 
-                {/* MAINTENANCE */}
+        {/* FEEDBACK / ERRORS */}
 
-                <button
-                  type="button"
-                  className="locker-button maintenance-button"
-                  onClick={handleMaintenanceToggle}
-                  disabled={
-                    !deviceUuid ||
-                    isChangingMode ||
-                    isControlling
-                  }
-                >
-                  {isChangingMode ? (
-                    <>
-                      <LoaderCircle
-                        size={18}
-                        className="spin"
-                      />
-                      Processing...
-                    </>
-                  ) : deviceMode === "MAINTENANCE" ? (
-                    <>
-                      <CheckCircle2 size={18} />
-                      Stop Maintenance
-                    </>
-                  ) : (
-                    <>
-                      <Wrench size={18} />
-                      Maintenance
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* COMMAND MESSAGES */}
-
+        {(controlMessage ||
+          controlError ||
+          lockersError ||
+          telemetryError ||
+          mqttStatusError) && (
+          <section className="dropora-feedback">
             {controlMessage && (
-              <p className="control-success">
-                {controlMessage}
-              </p>
+              <p className="dropora-feedback-success">{controlMessage}</p>
             )}
 
-            {controlError && (
-              <p className="control-error">
-                {controlError}
-              </p>
-            )}
-
-            {lockersError && (
-              <p className="control-error">
-                {lockersError}
-              </p>
-            )}
-
-            {telemetryError && (
-              <p className="control-error">
-                {telemetryError}
-              </p>
-            )}
-
-            {/* TELEMETRY SUMMARY */}
-
-            {deviceUuid && (
-              <div className="locker-telemetry-summary">
-                <p className="card-eyebrow">
-                  LATEST TELEMETRY
+            {[
+              controlError,
+              lockersError,
+              telemetryError,
+              mqttStatusError,
+            ]
+              .filter(Boolean)
+              .map((message, index) => (
+                <p className="dropora-feedback-error" key={index}>
+                  {message}
                 </p>
+              ))}
+          </section>
+        )}
 
-                <div>
-                  <span>Door Status</span>
+        {/* DEVICE DETAILS */}
 
-                  <strong>
-                    {doorClosed === true
-                      ? "Closed"
-                      : doorClosed === false
-                      ? "Open"
-                      : "Unknown"}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Power Mode</span>
-
-                  <strong>
-                    {typeof powerSaving !== "boolean"
-                      ? "Unknown"
-                      : displayedPowerSaving
-                      ? "Saving"
-                      : "Normal"}
-                  </strong>
-                </div>
-
-                {weight !== undefined && (
-                  <div>
-                    <span>Object Weight</span>
-                    <strong>{weight} g</strong>
-                  </div>
-                )}
-
-                {fillPercent !== undefined && (
-                  <div>
-                    <span>Box Fill Level</span>
-                    <strong>{fillPercent}%</strong>
-                  </div>
-                )}
-
-                {telemetryLoading && (
-                  <p className="telemetry-refreshing">
-                    <LoaderCircle
-                      size={14}
-                      className="spin"
-                    />
-                    Updating telemetry...
-                  </p>
-                )}
-              </div>
-            )}
+        <section className="dropora-panel dropora-extra-panel">
+          <div className="dropora-section-heading">
+            <div>
+              <h2>Device Details</h2>
+              <p>Latest information reported by your locker.</p>
+            </div>
 
             <button
-              className="scan-button"
-              onClick={() => navigate("/pair-locker")}
+              type="button"
+              className="dropora-small-button"
+              onClick={fetchTelemetry}
+              disabled={!deviceUuid || telemetryLoading}
             >
-              <ScanLine size={18} />
-              Scan / Pair Delivery Device
-            </button>
-          </section>
-
-          {/* PARCEL HISTORY */}
-
-          <section className="history-card">
-            <div className="card-header">
-              <div>
-                <p className="card-eyebrow">
-                  PARCEL HISTORY
-                </p>
-
-                <h2>Received Parcels</h2>
-              </div>
-
-              <button
-                className="view-history-button"
-                onClick={() =>
-                  navigate("/delivery-history")
-                }
-              >
-                View All
-                <ChevronRight size={17} />
-              </button>
-            </div>
-
-            <div className="history-list">
-              {historyLoading ? (
-                <p className="history-empty">
-                  Loading parcel history...
-                </p>
-              ) : historyError ? (
-                <div className="history-empty">
-                  <p>{historyError}</p>
-
-                  <button
-                    type="button"
-                    onClick={fetchParcelHistory}
-                    disabled={historyLoading}
-                  >
-                    Try Again
-                  </button>
-                </div>
-              ) : parcelHistory.length === 0 ? (
-                <p className="history-empty">
-                  No delivery records available.
-                </p>
+              {telemetryLoading ? (
+                <LoaderCircle size={15} className="spin" />
               ) : (
-                parcelHistory.map((parcel) => {
-                  const status = String(
-                    parcel.status || "to_receive"
-                  ).toLowerCase();
-
-                  const statusInfo =
-                    getParcelStatus(parcel);
-
-                  return (
-                    <div
-                      className="history-item"
-                      key={parcel.id}
-                    >
-                      <div className="history-package-icon">
-                        <Package size={20} />
-                      </div>
-
-                      <div className="history-info">
-                        <h3>
-                          {parcel.courier_type ||
-                            "Unknown Courier"}
-                        </h3>
-
-                        <p>
-                          {parcel.parcel_id ||
-                            "Unavailable"}
-                          {" · "}
-                          {formatParcelDate(
-                            parcel.created_at
-                          )}
-                        </p>
-                      </div>
-
-                      <div
-                        className={`history-status ${statusInfo.type}`}
-                      >
-                        {status === "received" ? (
-                          <CheckCircle2 size={15} />
-                        ) : status === "cancelled" ? (
-                          <XCircle size={15} />
-                        ) : (
-                          <Clock3 size={15} />
-                        )}
-
-                        {statusInfo.label}
-                      </div>
-
-                      <ChevronRight
-                        className="history-arrow"
-                        size={18}
-                      />
-                    </div>
-                  );
-                })
+                <RefreshCw size={15} />
               )}
+              Refresh
+            </button>
+          </div>
+
+          <div className="dropora-details-grid">
+            <div>
+              <span>Door Status</span>
+              <strong>
+                {doorClosed === true
+                  ? "Closed"
+                  : doorClosed === false
+                  ? "Open"
+                  : "Unknown"}
+              </strong>
             </div>
-          </section>
 
-          {/* DEVICE SLEEP HISTORY */}
+            <div>
+              <span>Object Weight</span>
+              <strong>
+                {weight !== undefined && weight !== null
+                  ? `${weight} g`
+                  : "—"}
+              </strong>
+            </div>
 
-          <section className="sleep-history-card">
-            <div className="card-header">
-              <div>
-                <p className="card-eyebrow">
-                  DEVICE HISTORY
-                </p>
+            <div>
+              <span>Box Fill Level</span>
+              <strong>
+                {fillPercent !== undefined && fillPercent !== null
+                  ? `${fillPercent}%`
+                  : "—"}
+              </strong>
+            </div>
 
-                <h2>Sleep History</h2>
+            <div>
+              <span>Device Mode</span>
+              <strong>
+                {deviceMode === "MAINTENANCE"
+                  ? "Maintenance"
+                  : deviceMode === "SLEEP"
+                  ? "Sleep"
+                  : "Normal"}
+              </strong>
+            </div>
+          </div>
 
-                <p className="sleep-history-subtitle">
-                  Records when your locker entered and exited sleep mode.
-                </p>
-              </div>
+          <button
+            type="button"
+            className="dropora-secondary-button"
+            onClick={() => navigate("/pair-locker")}
+          >
+            Pair Another Locker
+          </button>
 
+          <button
+            type="button"
+            className="dropora-secondary-button"
+            onClick={handleRequestStatus}
+            disabled={!deviceUuid || mqttStatusLoading}
+          >
+            {mqttStatusLoading ? "Requesting..." : "Request Device Status"}
+          </button>
+        </section>
+
+        {/* PARCEL HISTORY */}
+
+        <section className="dropora-panel dropora-extra-panel">
+          <div className="dropora-section-heading">
+            <div>
+              <h2>Received Parcels</h2>
+              <p>Your latest delivery records.</p>
+            </div>
+
+            <button
+              type="button"
+              className="dropora-small-button"
+              onClick={() => navigate("/delivery-history")}
+            >
+              View All
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {historyLoading ? (
+            <p className="dropora-history-message">Loading parcel history...</p>
+          ) : historyError ? (
+            <div className="dropora-history-message">
+              <p>{historyError}</p>
               <button
                 type="button"
-                className="sleep-history-refresh"
-                onClick={() =>
-                  fetchSleepEvents(0, false)
-                }
-                disabled={
-                  sleepLoading || !deviceUuid
-                }
+                className="dropora-small-button"
+                onClick={fetchParcelHistory}
               >
-                {sleepLoading && (
-                  <LoaderCircle
-                    size={16}
-                    className="spin"
-                  />
-                )}
-
-                Refresh
+                Try Again
               </button>
             </div>
+          ) : parcelHistory.length === 0 ? (
+            <p className="dropora-history-message">
+              No delivery records available.
+            </p>
+          ) : (
+            <div className="dropora-parcel-list">
+              {parcelHistory.map((parcel) => {
+                const status = String(
+                  parcel.status || "to_receive"
+                ).toLowerCase();
 
-            {!deviceUuid ? (
-              <p className="sleep-history-message">
-                Pair a locker to view its sleep history.
-              </p>
-            ) : sleepError ? (
-              <div className="sleep-history-message sleep-history-error">
-                <span>{sleepError}</span>
+                const statusInfo = getParcelStatus(parcel);
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    fetchSleepEvents(0, false)
-                  }
-                  disabled={sleepLoading}
-                >
-                  Try Again
-                </button>
-              </div>
-            ) : sleepLoading &&
-              sleepEvents.length === 0 ? (
-              <p className="sleep-history-message">
-                Loading sleep history...
-              </p>
-            ) : sleepEvents.length === 0 ? (
-              <p className="sleep-history-message">
-                No sleep events recorded yet.
-              </p>
-            ) : (
-              <div className="sleep-history-table-wrap">
-                <table className="sleep-history-table">
-                  <thead>
-                    <tr>
-                      <th>Sleep Time</th>
-                      <th>Wake Time</th>
-                      <th>Duration</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
+                return (
+                  <div className="dropora-parcel-item" key={parcel.id}>
+                    <div className="dropora-parcel-icon">
+                      <Package size={19} />
+                    </div>
 
-                  <tbody>
-                    {sleepEvents.map((event) => (
-                      <tr key={event.id}>
-                        <td data-label="Sleep Time">
-                          {formatSleepDate(
-                            event.slept_at
-                          )}
-                        </td>
+                    <div className="dropora-parcel-info">
+                      <strong>
+                        {parcel.courier_type || "Unknown Courier"}
+                      </strong>
 
-                        <td data-label="Wake Time">
-                          {formatSleepDate(
-                            event.woke_at
-                          )}
-                        </td>
+                      <span>
+                        {parcel.parcel_id || "Unavailable"}
+                        {" · "}
+                        {formatParcelDate(parcel.created_at)}
+                      </span>
+                    </div>
 
-                        <td data-label="Duration">
-                          {formatSleepDuration(
-                            event.duration_seconds
-                          )}
-                        </td>
+                    <span
+                      className={`dropora-parcel-status ${statusInfo.type}`}
+                    >
+                      {status === "received" ? (
+                        <CheckCircle2 size={14} />
+                      ) : status === "cancelled" ? (
+                        <XCircle size={14} />
+                      ) : (
+                        <Clock3 size={14} />
+                      )}
+                      {statusInfo.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-                        <td data-label="Status">
-                          <span
-                            className={`sleep-event-status ${
-                              event.woke_at
-                                ? "completed"
-                                : "ongoing"
-                            }`}
-                          >
-                            {event.woke_at
-                              ? "Awake"
-                              : "Sleeping"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        {/* SLEEP HISTORY */}
 
-            {sleepPagination.has_more && (
+        <section className="dropora-panel dropora-extra-panel">
+          <div className="dropora-section-heading">
+            <div>
+              <h2>Sleep History</h2>
+              <p>Records when your locker entered and exited sleep mode.</p>
+            </div>
+
+            <button
+              type="button"
+              className="dropora-small-button"
+              onClick={() => fetchSleepEvents(0, false)}
+              disabled={sleepLoading || !deviceUuid}
+            >
+              {sleepLoading ? (
+                <LoaderCircle size={15} className="spin" />
+              ) : (
+                <RefreshCw size={15} />
+              )}
+              Refresh
+            </button>
+          </div>
+
+          {!deviceUuid ? (
+            <p className="dropora-history-message">
+              Pair a locker to view its sleep history.
+            </p>
+          ) : sleepError ? (
+            <div className="dropora-history-message">
+              <p>{sleepError}</p>
               <button
                 type="button"
-                className="sleep-history-load-more"
-                onClick={() =>
-                  fetchSleepEvents(
-                    sleepPagination.next_offset ??
-                      sleepPagination.offset +
-                        sleepPagination.limit,
-                    true
-                  )
-                }
+                className="dropora-small-button"
+                onClick={() => fetchSleepEvents(0, false)}
                 disabled={sleepLoading}
               >
-                {sleepLoading
-                  ? "Loading..."
-                  : "Load More"}
+                Try Again
               </button>
-            )}
-          </section>
-        </div>
-      </main>
+            </div>
+          ) : sleepLoading && sleepEvents.length === 0 ? (
+            <p className="dropora-history-message">
+              Loading sleep history...
+            </p>
+          ) : sleepEvents.length === 0 ? (
+            <p className="dropora-history-message">
+              No sleep events recorded yet.
+            </p>
+          ) : (
+            <div className="dropora-table-wrap">
+              <table className="dropora-table">
+                <thead>
+                  <tr>
+                    <th>Sleep Time</th>
+                    <th>Wake Time</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {sleepEvents.map((event) => (
+                    <tr key={event.id}>
+                      <td data-label="Sleep Time">
+                        {formatSleepDate(event.slept_at)}
+                      </td>
+
+                      <td data-label="Wake Time">
+                        {formatSleepDate(event.woke_at)}
+                      </td>
+
+                      <td data-label="Duration">
+                        {formatSleepDuration(event.duration_seconds)}
+                      </td>
+
+                      <td data-label="Status">
+                        <span
+                          className={`dropora-parcel-status ${
+                            event.woke_at ? "collected" : "ready"
+                          }`}
+                        >
+                          {event.woke_at ? "Awake" : "Sleeping"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {sleepPagination.has_more && (
+            <button
+              type="button"
+              className="dropora-secondary-button"
+              onClick={() =>
+                fetchSleepEvents(
+                  sleepPagination.next_offset ??
+                    sleepPagination.offset + sleepPagination.limit,
+                  true
+                )
+              }
+              disabled={sleepLoading}
+            >
+              {sleepLoading ? "Loading..." : "Load More"}
+            </button>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
