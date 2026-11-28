@@ -1,3 +1,4 @@
+
 import { apiRequest } from "./api";
 import mqtt from "mqtt";
 
@@ -5,21 +6,33 @@ import mqtt from "mqtt";
 // MQTT CONFIGURATION
 // ======================================
 
-const BROKER = import.meta.env.VITE_MQTT_BROKER;
-const MQTT_USERNAME = import.meta.env.VITE_MQTT_USERNAME;
-const MQTT_PASSWORD = import.meta.env.VITE_MQTT_PASSWORD;
+const BROKER =
+  import.meta.env.VITE_MQTT_BROKER ||
+  "wss://maqiatto.com:4883";
+
+const MQTT_USERNAME =
+  import.meta.env.VITE_MQTT_USERNAME;
+
+const MQTT_PASSWORD =
+  import.meta.env.VITE_MQTT_PASSWORD;
 
 const DEVICE =
-  import.meta.env.VITE_MQTT_DEVICE_TOPIC_ROOT || MQTT_USERNAME;
+  import.meta.env.VITE_MQTT_DEVICE_TOPIC_ROOT ||
+  MQTT_USERNAME;
 
 const TOPICS = {
   maintenance_req: `${DEVICE}/maintenance_req`,
   remote_req: `${DEVICE}/remote_req`,
   status_req: `${DEVICE}/status_req`,
+
   maintenance_res: `${DEVICE}/maintenance_res`,
   remote_res: `${DEVICE}/remote_res`,
   status_res: `${DEVICE}/status_res`,
 };
+
+// ======================================
+// MQTT CLIENT
+// ======================================
 
 let mqttClient = null;
 let connectionPromise = null;
@@ -48,6 +61,8 @@ const parseMessage = (message) => {
 const handleMqttMessage = (topic, message) => {
   const response = parseMessage(message);
 
+  console.log("MQTT RESPONSE:", topic, response);
+
   const requestIndex = pendingRequests.findIndex(
     (request) =>
       request.responseTopic === topic &&
@@ -57,6 +72,7 @@ const handleMqttMessage = (topic, message) => {
   if (requestIndex === -1) return;
 
   const request = pendingRequests.splice(requestIndex, 1)[0];
+
   clearTimeout(request.timeout);
   request.resolve(response);
 };
@@ -68,6 +84,7 @@ const handleMqttMessage = (topic, message) => {
 const rejectPendingRequests = (message) => {
   while (pendingRequests.length > 0) {
     const request = pendingRequests.shift();
+
     clearTimeout(request.timeout);
     request.reject(new Error(message));
   }
@@ -78,9 +95,16 @@ const rejectPendingRequests = (message) => {
 // ======================================
 
 const ensureConnected = () => {
-  if (!BROKER || !MQTT_USERNAME || !MQTT_PASSWORD || !DEVICE) {
+  if (
+    !BROKER ||
+    !MQTT_USERNAME ||
+    !MQTT_PASSWORD ||
+    !DEVICE
+  ) {
     return Promise.reject(
-      new Error("MQTT configuration is missing. Check your .env file.")
+      new Error(
+        "MQTT configuration is missing. Check your .env file."
+      )
     );
   }
 
@@ -96,6 +120,7 @@ const ensureConnected = () => {
     mqttClient = mqtt.connect(BROKER, {
       username: MQTT_USERNAME,
       password: MQTT_PASSWORD,
+
       protocolVersion: 4,
       clean: true,
       reconnectPeriod: 3000,
@@ -107,6 +132,7 @@ const ensureConnected = () => {
 
     mqttClient.on("close", () => {
       subscriptionPromise = null;
+
       rejectPendingRequests(
         "MQTT connection was interrupted. Please try again."
       );
@@ -118,6 +144,10 @@ const ensureConnected = () => {
 
     mqttClient.on("offline", () => {
       console.warn("MQTT client is offline.");
+    });
+
+    mqttClient.on("reconnect", () => {
+      console.log("Reconnecting to MQTT...");
     });
   }
 
@@ -166,15 +196,20 @@ const ensureSubscribed = async () => {
   ];
 
   subscriptionPromise = new Promise((resolve, reject) => {
-    client.subscribe(responseTopics, { qos: 1 }, (error) => {
-      if (error) {
-        subscriptionPromise = null;
-        reject(error);
-        return;
-      }
+    client.subscribe(
+      responseTopics,
+      { qos: 1 },
+      (error) => {
+        if (error) {
+          subscriptionPromise = null;
+          reject(error);
+          return;
+        }
 
-      resolve();
-    });
+        console.log("Subscribed to MQTT response topics.");
+        resolve();
+      }
+    );
   });
 
   return subscriptionPromise;
@@ -199,7 +234,8 @@ const publishAndWait = async ({
 
   if (
     pendingRequests.some(
-      (request) => request.responseTopic === responseTopic
+      (request) =>
+        request.responseTopic === responseTopic
     )
   ) {
     throw new Error(
@@ -224,7 +260,9 @@ const publishAndWait = async ({
       }
 
       reject(
-        new Error(`No response received from device on ${responseTopic}.`)
+        new Error(
+          `No response received from device on ${responseTopic}.`
+        )
       );
     }, timeoutMs);
 
@@ -235,7 +273,10 @@ const publishAndWait = async ({
       JSON.stringify(payload),
       { qos: 1, retain: false },
       (error) => {
-        if (!error) return;
+        if (!error) {
+          console.log("MQTT REQUEST:", requestTopic, payload);
+          return;
+        }
 
         const index = pendingRequests.indexOf(request);
 
@@ -281,12 +322,15 @@ export const unpairLocker = (deviceUuid) => {
 
   return apiRequest(
     `/locker/unpair/${encodeURIComponent(deviceUuid)}`,
-    { method: "DELETE" }
+    {
+      method: "DELETE",
+    }
   );
 };
 
 // ======================================
 // REMOTE LOCKER CONTROL - MQTT
+// LOCK / UNLOCK / SLEEP / WAKE UP
 // ======================================
 
 export const sendRemoteCommand = ({
@@ -315,6 +359,7 @@ export const sendRemoteCommand = ({
     requestTopic: TOPICS.remote_req,
     responseTopic: TOPICS.remote_res,
     payload,
+
     matches: (response) =>
       response &&
       typeof response === "object" &&
@@ -331,7 +376,11 @@ export const startMaintenance = () => {
   return publishAndWait({
     requestTopic: TOPICS.maintenance_req,
     responseTopic: TOPICS.maintenance_res,
-    payload: { action: "start" },
+
+    payload: {
+      action: "start",
+    },
+
     matches: (response) =>
       response &&
       typeof response === "object" &&
@@ -353,7 +402,11 @@ export const stopMaintenance = () => {
   return publishAndWait({
     requestTopic: TOPICS.maintenance_req,
     responseTopic: TOPICS.maintenance_res,
-    payload: { action: "stop" },
+
+    payload: {
+      action: "stop",
+    },
+
     matches: (response) =>
       response &&
       typeof response === "object" &&
@@ -375,7 +428,9 @@ export const requestDeviceStatus = () => {
   return publishAndWait({
     requestTopic: TOPICS.status_req,
     responseTopic: TOPICS.status_res,
+
     payload: {},
+
     matches: (response) =>
       ["NORMAL", "SLEEP", "MAINTENANCE"].includes(
         String(response).trim().toUpperCase()
@@ -397,8 +452,12 @@ export const getRemoteCommands = (
   }
 
   return apiRequest(
-    `/remote/${encodeURIComponent(deviceUuid)}/commands?offset=${offset}&limit=${limit}`,
-    { method: "GET" }
+    `/remote/${encodeURIComponent(
+      deviceUuid
+    )}/commands?offset=${offset}&limit=${limit}`,
+    {
+      method: "GET",
+    }
   );
 };
 

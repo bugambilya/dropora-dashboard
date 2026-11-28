@@ -844,3 +844,416 @@
  
   font-size: 10px; 
 }
+
+
+/* =========================================================
+   RESPONSIVE HOME PAGE
+   Add this at the bottom of your existing CSS file
+========================================================= */
+
+/* TABLETS AND SMALL LAPTOPS */
+
+@media (max-width: 1024px) {
+  .home-content {
+    width: 100%;
+  }
+
+  .home-hero {
+    min-height: auto;
+    grid-template-columns: 1fr 1fr;
+    gap: 35px;
+    padding: 50px 25px;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(38px, 5vw, 56px);
+  }
+
+  .home-locker-wrapper {
+    min-height: 400px;
+  }
+
+  .home-locker {
+    width: min(320px, 90%);
+    min-height: 390px;
+  }
+
+  .home-locker-door {
+    min-height: 260px;
+  }
+
+  .home-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-cta {
+    padding: 28px;
+  }
+}
+
+
+/* MOBILE DEVICES */
+
+@media (max-width: 768px) {
+  .home-header {
+    min-height: 70px;
+    padding: 12px 5%;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .home-logo {
+    font-size: 20px;
+  }
+
+  .home-header-right {
+    gap: 8px;
+  }
+
+  .home-online {
+    padding: 8px 11px;
+    font-size: 10px;
+  }
+
+  .home-login-button,
+  .home-signup-button {
+    min-height: 40px;
+    padding: 0 13px;
+    font-size: 12px;
+    border-radius: 12px;
+  }
+
+  /* HERO */
+
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: 25px;
+    padding: 45px 22px 30px;
+    text-align: center;
+  }
+
+  .home-hero-text {
+    max-width: 650px;
+    margin: 0 auto;
+  }
+
+  .home-badge {
+    font-size: 9px;
+    padding: 8px 13px;
+  }
+
+  .home-hero h1 {
+    margin-top: 20px;
+    font-size: clamp(36px, 8vw, 55px);
+    line-height: 1.1;
+  }
+
+  .home-hero p {
+    margin: 20px auto 0;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .home-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 25px;
+  }
+
+  .home-primary-button,
+  .home-secondary-button {
+    min-height: 48px;
+    padding: 0 18px;
+    font-size: 13px;
+  }
+
+  /* LOCKER VISUAL */
+
+  .home-locker-wrapper {
+    min-height: 390px;
+    width: 100%;
+  }
+
+  .home-glow {
+    width: 280px;
+    height: 280px;
+  }
+
+  .home-locker {
+    width: min(300px, 85%);
+    min-height: 370px;
+  }
+
+  .home-locker-door {
+    min-height: 250px;
+  }
+
+  .home-lock-icon {
+    width: 72px;
+    height: 72px;
+  }
+
+  /* FEATURES */
+
+  .home-features {
+    padding: 35px 22px 50px;
+  }
+
+  .home-section-heading {
+    margin-bottom: 25px;
+  }
+
+  .home-section-heading h2 {
+    font-size: 28px;
+  }
+
+  .home-section-heading p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .home-feature-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .home-feature-card {
+    min-height: auto;
+    padding: 22px;
+    border-radius: 20px;
+    gap: 15px;
+  }
+
+  .home-feature-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .home-feature-card h3 {
+    font-size: 15px;
+  }
+
+  .home-feature-card p {
+    font-size: 13px;
+  }
+
+  /* CTA */
+
+  .home-cta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 25px;
+    margin: 0 22px 35px;
+    border-radius: 22px;
+  }
+
+  .home-cta h2 {
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  .home-cta-button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  /* FOOTER */
+
+  .home-footer {
+    padding: 22px;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 10px;
+  }
+}
+
+
+/* SMALL PHONES */
+
+@media (max-width: 480px) {
+  .home-header {
+    padding: 12px 4%;
+  }
+
+  .home-logo {
+    font-size: 17px;
+    letter-spacing: 0.08em;
+  }
+
+  .home-header-right {
+    gap: 6px;
+  }
+
+  .home-online {
+    gap: 6px;
+    padding: 7px 9px;
+    font-size: 9px;
+  }
+
+  .home-online-dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .home-login-button,
+  .home-signup-button {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 11px;
+    border-radius: 10px;
+  }
+
+  .home-hero {
+    padding: 35px 18px 25px;
+    gap: 15px;
+  }
+
+  .home-badge {
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    padding: 8px 11px;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(32px, 9vw, 42px);
+  }
+
+  .home-hero p {
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .home-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .home-primary-button,
+  .home-secondary-button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .home-locker-wrapper {
+    min-height: 340px;
+  }
+
+  .home-locker {
+    width: min(270px, 90%);
+    min-height: 340px;
+    border-radius: 24px;
+  }
+
+  .home-locker-top {
+    height: 50px;
+    padding: 0 17px;
+    font-size: 10px;
+  }
+
+  .home-locker-body {
+    padding: 15px;
+  }
+
+  .home-locker-door {
+    min-height: 230px;
+    border-radius: 18px;
+  }
+
+  .home-locker-bottom {
+    height: 45px;
+    padding: 0 17px;
+    font-size: 8px;
+  }
+
+  .home-lock-icon {
+    width: 65px;
+    height: 65px;
+  }
+
+  .home-lock-status {
+    font-size: 10px;
+  }
+
+  .home-features {
+    padding: 30px 18px 40px;
+  }
+
+  .home-section-heading h2 {
+    font-size: 25px;
+  }
+
+  .home-section-heading p {
+    font-size: 12px;
+  }
+
+  .home-feature-card {
+    padding: 18px;
+    gap: 13px;
+  }
+
+  .home-feature-icon {
+    width: 43px;
+    height: 43px;
+    border-radius: 13px;
+  }
+
+  .home-feature-card h3 {
+    font-size: 14px;
+  }
+
+  .home-feature-card p {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .home-cta {
+    padding: 22px;
+    margin: 0 18px 30px;
+  }
+
+  .home-cta-label {
+    font-size: 9px;
+  }
+
+  .home-cta h2 {
+    font-size: 20px;
+  }
+
+  .home-footer {
+    padding: 20px 18px;
+    flex-direction: column;
+    align-items: flex-start;
+    font-size: 9px;
+  }
+}
+
+
+/* EXTRA NARROW PHONES */
+
+@media (max-width: 360px) {
+  .home-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .home-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .home-hero h1 {
+    font-size: 32px;
+  }
+
+  .home-feature-card {
+    flex-direction: column;
+  }
+
+  .home-cta h2 {
+    font-size: 18px;
+  }
+}

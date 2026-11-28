@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   Package,
   CheckCircle2,
@@ -14,9 +15,16 @@ import {
   Sun,
   LoaderCircle,
   BatteryCharging,
+  Wrench,
 } from "lucide-react";
 
-import { sendRemoteCommand } from "../services/locker";
+import {
+  sendRemoteCommand,
+  startMaintenance,
+  stopMaintenance,
+} from "../services/locker";
+
+
 import { getDeliveries } from "../services/deliveryService";
 import { getSleepEvents } from "../services/sleepEventService";
 
@@ -38,10 +46,12 @@ function Dashboard({ darkMode, setDarkMode }) {
   const [telemetryError, setTelemetryError] = useState("");
 
   const [isControlling, setIsControlling] = useState(false);
-  const [isChangingPower, setIsChangingPower] = useState(false);
+  const [isChangingMode, setIsChangingMode] = useState(false);
 
   const [powerSavingOverride, setPowerSavingOverride] = useState(null);
   const [lockOverride, setLockOverride] = useState(null);
+
+  const [deviceMode, setDeviceMode] = useState("NORMAL");
 
   const [controlError, setControlError] = useState("");
   const [controlMessage, setControlMessage] = useState("");
@@ -58,27 +68,41 @@ function Dashboard({ darkMode, setDarkMode }) {
       const token = localStorage.getItem("accessToken");
 
       if (!token) {
-        throw new Error("Please log in to view your paired lockers.");
+        throw new Error(
+          "Please log in to view your paired lockers."
+        );
       }
 
-      const response = await fetch(`${API_BASE}/api/locker/paired`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${API_BASE}/api/locker/paired`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Unable to load paired lockers.");
+        throw new Error(
+          data.error || "Unable to load paired lockers."
+        );
       }
 
-      setLockers(Array.isArray(data.devices) ? data.devices : []);
+      setLockers(
+        Array.isArray(data.devices)
+          ? data.devices
+          : []
+      );
     } catch (error) {
       console.error("Fetch lockers error:", error);
-      setLockersError(error.message || "Unable to load lockers.");
+
+      setLockersError(
+        error.message || "Unable to load lockers."
+      );
     } finally {
       setLockersLoading(false);
     }
@@ -107,7 +131,9 @@ function Dashboard({ darkMode, setDarkMode }) {
       const token = localStorage.getItem("accessToken");
 
       if (!token) {
-        throw new Error("Please log in to view telemetry.");
+        throw new Error(
+          "Please log in to view telemetry."
+        );
       }
 
       const response = await fetch(
@@ -126,7 +152,9 @@ function Dashboard({ darkMode, setDarkMode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Unable to load telemetry data.");
+        throw new Error(
+          data.error || "Unable to load telemetry data."
+        );
       }
 
       const latestPayload = Array.isArray(data.telemetry)
@@ -147,12 +175,30 @@ function Dashboard({ darkMode, setDarkMode }) {
           : requestedLock
       );
 
+      // Update Sleep / Normal mode from telemetry
+      if (typeof latestPayload.power_saving === "boolean") {
+        setDeviceMode((currentMode) => {
+          if (currentMode === "MAINTENANCE") {
+            return currentMode;
+          }
+
+          return latestPayload.power_saving
+            ? "SLEEP"
+            : "NORMAL";
+        });
+      }
+
       setTelemetry(
-        Array.isArray(data.telemetry) ? data.telemetry : []
+        Array.isArray(data.telemetry)
+          ? data.telemetry
+          : []
       );
     } catch (error) {
       console.error("Fetch telemetry error:", error);
-      setTelemetryError(error.message || "Unable to load telemetry.");
+
+      setTelemetryError(
+        error.message || "Unable to load telemetry."
+      );
     } finally {
       setTelemetryLoading(false);
     }
@@ -166,7 +212,10 @@ function Dashboard({ darkMode, setDarkMode }) {
 
     fetchTelemetry();
 
-    const interval = setInterval(fetchTelemetry, 3000);
+    const interval = setInterval(
+      fetchTelemetry,
+      3000
+    );
 
     return () => clearInterval(interval);
   }, [deviceUuid, fetchTelemetry]);
@@ -193,6 +242,7 @@ function Dashboard({ darkMode, setDarkMode }) {
     async (offset = 0, append = false) => {
       if (!deviceUuid) {
         setSleepEvents([]);
+
         setSleepPagination({
           offset: 0,
           limit: 10,
@@ -200,6 +250,7 @@ function Dashboard({ darkMode, setDarkMode }) {
           has_more: false,
           next_offset: null,
         });
+
         return;
       }
 
@@ -212,7 +263,11 @@ function Dashboard({ darkMode, setDarkMode }) {
         setSleepLoading(true);
         setSleepError("");
 
-        const data = await getSleepEvents(deviceUuid, offset, 10);
+        const data = await getSleepEvents(
+          deviceUuid,
+          offset,
+          10
+        );
 
         const events = Array.isArray(data.sleep_events)
           ? data.sleep_events
@@ -227,7 +282,9 @@ function Dashboard({ darkMode, setDarkMode }) {
 
           return [
             ...previous,
-            ...events.filter((event) => !existingIds.has(event.id)),
+            ...events.filter(
+              (event) => !existingIds.has(event.id)
+            ),
           ];
         });
 
@@ -241,7 +298,10 @@ function Dashboard({ darkMode, setDarkMode }) {
           }
         );
       } catch (error) {
-        console.error("Fetch sleep history error:", error);
+        console.error(
+          "Fetch sleep history error:",
+          error
+        );
 
         setSleepError(
           error.message || "Unable to load sleep history."
@@ -258,6 +318,7 @@ function Dashboard({ darkMode, setDarkMode }) {
     if (!deviceUuid) {
       setSleepEvents([]);
       setSleepError("");
+
       setSleepPagination({
         offset: 0,
         limit: 10,
@@ -265,6 +326,7 @@ function Dashboard({ darkMode, setDarkMode }) {
         has_more: false,
         next_offset: null,
       });
+
       return;
     }
 
@@ -314,7 +376,9 @@ function Dashboard({ darkMode, setDarkMode }) {
     );
 
     const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const minutes = Math.floor(
+      (totalSeconds % 3600) / 60
+    );
     const remainingSeconds = totalSeconds % 60;
 
     if (hours > 0) {
@@ -347,12 +411,10 @@ function Dashboard({ darkMode, setDarkMode }) {
       ? lockOverride
       : solenoidLocked === true;
 
-  const isPowerSaving = powerSaving === true;
-
   const displayedPowerSaving =
     powerSavingOverride !== null
       ? powerSavingOverride
-      : isPowerSaving;
+      : powerSaving === true;
 
   // ======================================
   // REMOTE DOOR LOCK CONTROL - MQTT
@@ -368,7 +430,9 @@ function Dashboard({ darkMode, setDarkMode }) {
       typeof solenoidLocked !== "boolean" &&
       lockOverride === null
     ) {
-      setControlError("Waiting for valid locker lock telemetry.");
+      setControlError(
+        "Waiting for valid locker lock telemetry."
+      );
       return;
     }
 
@@ -386,13 +450,18 @@ function Dashboard({ darkMode, setDarkMode }) {
       setLockOverride(!isLocked);
 
       setControlMessage(
-        data.message || "Door lock command confirmed by the device."
+        data.message ||
+          "Door lock command confirmed by the device."
       );
     } catch (error) {
-      console.error("Remote door control error:", error);
+      console.error(
+        "Remote door control error:",
+        error
+      );
 
       setControlError(
-        error.message || "Unable to send door lock command."
+        error.message ||
+          "Unable to send door lock command."
       );
     } finally {
       setIsControlling(false);
@@ -400,46 +469,149 @@ function Dashboard({ darkMode, setDarkMode }) {
   };
 
   // ======================================
-  // REMOTE POWER SAVING CONTROL - MQTT
+  // SLEEP LOCKER - MQTT
   // ======================================
 
-  const handlePowerToggle = async () => {
+  const handleSleep = async () => {
     if (!deviceUuid) {
       setControlError("Please pair a locker first.");
       return;
     }
 
-    if (typeof powerSaving !== "boolean") {
-      setControlError("Waiting for valid power mode telemetry.");
+    if (
+      typeof solenoidLocked !== "boolean" &&
+      lockOverride === null
+    ) {
+      setControlError(
+        "Waiting for valid locker lock telemetry."
+      );
       return;
     }
 
     try {
-      setIsChangingPower(true);
+      setIsChangingMode(true);
       setControlError("");
       setControlMessage("");
-
-      const nextPowerSaving = !displayedPowerSaving;
 
       const data = await sendRemoteCommand({
         deviceUuid,
         doorLocked: isLocked,
-        powerSaving: nextPowerSaving,
+        powerSaving: true,
       });
 
-      setPowerSavingOverride(nextPowerSaving);
+      setPowerSavingOverride(true);
+      setDeviceMode("SLEEP");
 
       setControlMessage(
-        data.message || "Power mode command submitted successfully."
+        data.message ||
+          "Locker sleep command confirmed."
       );
     } catch (error) {
-      console.error("Remote power mode error:", error);
+      console.error("Sleep command error:", error);
 
       setControlError(
-        error.message || "Unable to change power mode."
+        error.message ||
+          "Unable to put locker to sleep."
       );
     } finally {
-      setIsChangingPower(false);
+      setIsChangingMode(false);
+    }
+  };
+
+  // ======================================
+  // WAKE UP LOCKER - MQTT
+  // ======================================
+
+  const handleWakeUp = async () => {
+    if (!deviceUuid) {
+      setControlError("Please pair a locker first.");
+      return;
+    }
+
+    if (
+      typeof solenoidLocked !== "boolean" &&
+      lockOverride === null
+    ) {
+      setControlError(
+        "Waiting for valid locker lock telemetry."
+      );
+      return;
+    }
+
+    try {
+      setIsChangingMode(true);
+      setControlError("");
+      setControlMessage("");
+
+      const data = await sendRemoteCommand({
+        deviceUuid,
+        doorLocked: isLocked,
+        powerSaving: false,
+      });
+
+      setPowerSavingOverride(false);
+      setDeviceMode("NORMAL");
+
+      setControlMessage(
+        data.message ||
+          "Locker wake-up command confirmed."
+      );
+    } catch (error) {
+      console.error("Wake-up command error:", error);
+
+      setControlError(
+        error.message ||
+          "Unable to wake up locker."
+      );
+    } finally {
+      setIsChangingMode(false);
+    }
+  };
+
+  // ======================================
+  // MAINTENANCE MODE
+  // ======================================
+
+  const handleMaintenanceToggle = async () => {
+    if (!deviceUuid) {
+      setControlError("Please pair a locker first.");
+      return;
+    }
+
+    try {
+      setIsChangingMode(true);
+      setControlError("");
+      setControlMessage("");
+
+      if (deviceMode === "MAINTENANCE") {
+        const data = await stopMaintenance(deviceUuid);
+
+        setDeviceMode("NORMAL");
+
+        setControlMessage(
+          data.message || "Maintenance mode stopped."
+        );
+      } else {
+        const data = await startMaintenance(deviceUuid);
+
+        setDeviceMode("MAINTENANCE");
+
+        setControlMessage(
+          data.message || "Maintenance mode started."
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Maintenance command error:",
+        error
+      );
+
+      setControlError(
+        error.message ||
+          "Unable to change maintenance mode."
+      );
+    } finally {
+      setIsChangingMode(false);
     }
   };
 
@@ -468,12 +640,18 @@ function Dashboard({ darkMode, setDarkMode }) {
           new Date(a.created_at || 0).getTime()
       );
 
-      setParcelHistory(sortedDeliveries.slice(0, 4));
+      setParcelHistory(
+        sortedDeliveries.slice(0, 4)
+      );
     } catch (error) {
-      console.error("Dashboard parcel history error:", error);
+      console.error(
+        "Dashboard parcel history error:",
+        error
+      );
 
       setHistoryError(
-        error.message || "Unable to load parcel history."
+        error.message ||
+          "Unable to load parcel history."
       );
 
       setParcelHistory([]);
@@ -526,7 +704,9 @@ function Dashboard({ darkMode, setDarkMode }) {
       statusConfig[status] || {
         label: status
           .replaceAll("_", " ")
-          .replace(/\b\w/g, (letter) => letter.toUpperCase()),
+          .replace(/\b\w/g, (letter) =>
+            letter.toUpperCase()
+          ),
         type: "ready",
       }
     );
@@ -550,7 +730,11 @@ function Dashboard({ darkMode, setDarkMode }) {
             onClick={() => setDarkMode(!darkMode)}
             aria-label="Toggle dark mode"
           >
-            {darkMode ? <Sun size={19} /> : <Moon size={19} />}
+            {darkMode ? (
+              <Sun size={19} />
+            ) : (
+              <Moon size={19} />
+            )}
           </button>
         </div>
       </header>
@@ -558,8 +742,12 @@ function Dashboard({ darkMode, setDarkMode }) {
       <main className="dashboard">
         <section className="dashboard-welcome">
           <div>
-            <p className="dashboard-eyebrow">WELCOME TO</p>
+            <p className="dashboard-eyebrow">
+              WELCOME TO
+            </p>
+
             <h1>DROPORA</h1>
+
             <p className="dashboard-welcome-subtitle">
               Manage your parcels and smart lockers in one place.
             </p>
@@ -572,12 +760,16 @@ function Dashboard({ darkMode, setDarkMode }) {
           <section className="locker-card">
             <div className="card-header">
               <div>
-                <p className="card-eyebrow">YOUR LOCKER</p>
+                <p className="card-eyebrow">
+                  YOUR LOCKER
+                </p>
+
                 <h2>Main Compartment</h2>
               </div>
 
               <div className="locker-online">
                 <span></span>
+
                 {lockersLoading
                   ? "Loading..."
                   : deviceUuid
@@ -613,23 +805,30 @@ function Dashboard({ darkMode, setDarkMode }) {
               </p>
             </div>
 
+            {/* LOCK / UNLOCK */}
+
             <button
               type="button"
               className={`locker-button ${
-                isLocked ? "unlock-button" : "lock-button"
+                isLocked
+                  ? "unlock-button"
+                  : "lock-button"
               }`}
               onClick={handleLockToggle}
               disabled={
                 !deviceUuid ||
                 isControlling ||
-                isChangingPower ||
+                isChangingMode ||
                 (typeof solenoidLocked !== "boolean" &&
                   lockOverride === null)
               }
             >
               {isControlling ? (
                 <>
-                  <LoaderCircle size={18} className="spin" />
+                  <LoaderCircle
+                    size={18}
+                    className="spin"
+                  />
                   Sending Command...
                 </>
               ) : isLocked ? (
@@ -645,75 +844,159 @@ function Dashboard({ darkMode, setDarkMode }) {
               )}
             </button>
 
+            {/* SLEEP / WAKE / MAINTENANCE */}
+
             <div className="power-mode-control">
               <div>
-                <p className="card-eyebrow">POWER MANAGEMENT</p>
-                <h3>Power Saving Mode</h3>
+                <p className="card-eyebrow">
+                  DEVICE MODE
+                </p>
+
+                <h3>Locker Controls</h3>
+
                 <p>
-                  {typeof powerSaving !== "boolean"
-                    ? "Waiting for power mode telemetry."
-                    : displayedPowerSaving
-                    ? "Power-saving mode is enabled."
-                    : "Power-saving mode is disabled."}
+                  Current Mode:{" "}
+                  <strong>
+                    {deviceMode === "MAINTENANCE"
+                      ? "Maintenance"
+                      : deviceMode === "SLEEP"
+                      ? "Sleep"
+                      : "Normal"}
+                  </strong>
                 </p>
               </div>
 
-              <button
-                type="button"
-                className={`locker-button ${
-                  displayedPowerSaving
-                    ? "lock-button"
-                    : "unlock-button"
-                }`}
-                onClick={handlePowerToggle}
-                disabled={
-                  !deviceUuid ||
-                  isChangingPower ||
-                  isControlling ||
-                  typeof powerSaving !== "boolean"
-                }
-              >
-                {isChangingPower ? (
-                  <>
-                    <LoaderCircle size={18} className="spin" />
-                    Processing...
-                  </>
-                ) : displayedPowerSaving ? (
-                  <>
-                    <Sun size={18} />
-                    Wake Up
-                  </>
-                ) : (
-                  <>
-                    <BatteryCharging size={18} />
-                    Enable Power Saving
-                  </>
-                )}
-              </button>
+              <div className="device-mode-buttons">
+                {/* SLEEP */}
+
+                <button
+                  type="button"
+                  className="locker-button lock-button"
+                  onClick={handleSleep}
+                  disabled={
+                    !deviceUuid ||
+                    isChangingMode ||
+                    isControlling ||
+                    deviceMode === "SLEEP"
+                  }
+                >
+                  {isChangingMode ? (
+                    <>
+                      <LoaderCircle
+                        size={18}
+                        className="spin"
+                      />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Moon size={18} />
+                      Sleep
+                    </>
+                  )}
+                </button>
+
+                {/* WAKE UP */}
+
+                <button
+                  type="button"
+                  className="locker-button unlock-button"
+                  onClick={handleWakeUp}
+                  disabled={
+                    !deviceUuid ||
+                    isChangingMode ||
+                    isControlling ||
+                    deviceMode === "NORMAL"
+                  }
+                >
+                  {isChangingMode ? (
+                    <>
+                      <LoaderCircle
+                        size={18}
+                        className="spin"
+                      />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Sun size={18} />
+                      Wake Up
+                    </>
+                  )}
+                </button>
+
+                {/* MAINTENANCE */}
+
+                <button
+                  type="button"
+                  className="locker-button maintenance-button"
+                  onClick={handleMaintenanceToggle}
+                  disabled={
+                    !deviceUuid ||
+                    isChangingMode ||
+                    isControlling
+                  }
+                >
+                  {isChangingMode ? (
+                    <>
+                      <LoaderCircle
+                        size={18}
+                        className="spin"
+                      />
+                      Processing...
+                    </>
+                  ) : deviceMode === "MAINTENANCE" ? (
+                    <>
+                      <CheckCircle2 size={18} />
+                      Stop Maintenance
+                    </>
+                  ) : (
+                    <>
+                      <Wrench size={18} />
+                      Maintenance
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
+            {/* COMMAND MESSAGES */}
+
             {controlMessage && (
-              <p className="control-success">{controlMessage}</p>
+              <p className="control-success">
+                {controlMessage}
+              </p>
             )}
 
             {controlError && (
-              <p className="control-error">{controlError}</p>
+              <p className="control-error">
+                {controlError}
+              </p>
             )}
 
             {lockersError && (
-              <p className="control-error">{lockersError}</p>
+              <p className="control-error">
+                {lockersError}
+              </p>
             )}
 
             {telemetryError && (
-              <p className="control-error">{telemetryError}</p>
+              <p className="control-error">
+                {telemetryError}
+              </p>
             )}
+
+            {/* TELEMETRY SUMMARY */}
 
             {deviceUuid && (
               <div className="locker-telemetry-summary">
-                <p className="card-eyebrow">LATEST TELEMETRY</p>
+                <p className="card-eyebrow">
+                  LATEST TELEMETRY
+                </p>
 
                 <div>
                   <span>Door Status</span>
+
                   <strong>
                     {doorClosed === true
                       ? "Closed"
@@ -725,6 +1008,7 @@ function Dashboard({ darkMode, setDarkMode }) {
 
                 <div>
                   <span>Power Mode</span>
+
                   <strong>
                     {typeof powerSaving !== "boolean"
                       ? "Unknown"
@@ -750,7 +1034,10 @@ function Dashboard({ darkMode, setDarkMode }) {
 
                 {telemetryLoading && (
                   <p className="telemetry-refreshing">
-                    <LoaderCircle size={14} className="spin" />
+                    <LoaderCircle
+                      size={14}
+                      className="spin"
+                    />
                     Updating telemetry...
                   </p>
                 )}
@@ -771,13 +1058,18 @@ function Dashboard({ darkMode, setDarkMode }) {
           <section className="history-card">
             <div className="card-header">
               <div>
-                <p className="card-eyebrow">PARCEL HISTORY</p>
+                <p className="card-eyebrow">
+                  PARCEL HISTORY
+                </p>
+
                 <h2>Received Parcels</h2>
               </div>
 
               <button
                 className="view-history-button"
-                onClick={() => navigate("/delivery-history")}
+                onClick={() =>
+                  navigate("/delivery-history")
+                }
               >
                 View All
                 <ChevronRight size={17} />
@@ -792,6 +1084,7 @@ function Dashboard({ darkMode, setDarkMode }) {
               ) : historyError ? (
                 <div className="history-empty">
                   <p>{historyError}</p>
+
                   <button
                     type="button"
                     onClick={fetchParcelHistory}
@@ -810,22 +1103,31 @@ function Dashboard({ darkMode, setDarkMode }) {
                     parcel.status || "to_receive"
                   ).toLowerCase();
 
-                  const statusInfo = getParcelStatus(parcel);
+                  const statusInfo =
+                    getParcelStatus(parcel);
 
                   return (
-                    <div className="history-item" key={parcel.id}>
+                    <div
+                      className="history-item"
+                      key={parcel.id}
+                    >
                       <div className="history-package-icon">
                         <Package size={20} />
                       </div>
 
                       <div className="history-info">
                         <h3>
-                          {parcel.courier_type || "Unknown Courier"}
+                          {parcel.courier_type ||
+                            "Unknown Courier"}
                         </h3>
+
                         <p>
-                          {parcel.parcel_id || "Unavailable"}
+                          {parcel.parcel_id ||
+                            "Unavailable"}
                           {" · "}
-                          {formatParcelDate(parcel.created_at)}
+                          {formatParcelDate(
+                            parcel.created_at
+                          )}
                         </p>
                       </div>
 
@@ -859,8 +1161,12 @@ function Dashboard({ darkMode, setDarkMode }) {
           <section className="sleep-history-card">
             <div className="card-header">
               <div>
-                <p className="card-eyebrow">DEVICE HISTORY</p>
+                <p className="card-eyebrow">
+                  DEVICE HISTORY
+                </p>
+
                 <h2>Sleep History</h2>
+
                 <p className="sleep-history-subtitle">
                   Records when your locker entered and exited sleep mode.
                 </p>
@@ -869,12 +1175,20 @@ function Dashboard({ darkMode, setDarkMode }) {
               <button
                 type="button"
                 className="sleep-history-refresh"
-                onClick={() => fetchSleepEvents(0, false)}
-                disabled={sleepLoading || !deviceUuid}
+                onClick={() =>
+                  fetchSleepEvents(0, false)
+                }
+                disabled={
+                  sleepLoading || !deviceUuid
+                }
               >
                 {sleepLoading && (
-                  <LoaderCircle size={16} className="spin" />
+                  <LoaderCircle
+                    size={16}
+                    className="spin"
+                  />
                 )}
+
                 Refresh
               </button>
             </div>
@@ -889,13 +1203,16 @@ function Dashboard({ darkMode, setDarkMode }) {
 
                 <button
                   type="button"
-                  onClick={() => fetchSleepEvents(0, false)}
+                  onClick={() =>
+                    fetchSleepEvents(0, false)
+                  }
                   disabled={sleepLoading}
                 >
                   Try Again
                 </button>
               </div>
-            ) : sleepLoading && sleepEvents.length === 0 ? (
+            ) : sleepLoading &&
+              sleepEvents.length === 0 ? (
               <p className="sleep-history-message">
                 Loading sleep history...
               </p>
@@ -919,15 +1236,21 @@ function Dashboard({ darkMode, setDarkMode }) {
                     {sleepEvents.map((event) => (
                       <tr key={event.id}>
                         <td data-label="Sleep Time">
-                          {formatSleepDate(event.slept_at)}
+                          {formatSleepDate(
+                            event.slept_at
+                          )}
                         </td>
 
                         <td data-label="Wake Time">
-                          {formatSleepDate(event.woke_at)}
+                          {formatSleepDate(
+                            event.woke_at
+                          )}
                         </td>
 
                         <td data-label="Duration">
-                          {formatSleepDuration(event.duration_seconds)}
+                          {formatSleepDuration(
+                            event.duration_seconds
+                          )}
                         </td>
 
                         <td data-label="Status">
@@ -938,7 +1261,9 @@ function Dashboard({ darkMode, setDarkMode }) {
                                 : "ongoing"
                             }`}
                           >
-                            {event.woke_at ? "Awake" : "Sleeping"}
+                            {event.woke_at
+                              ? "Awake"
+                              : "Sleeping"}
                           </span>
                         </td>
                       </tr>
@@ -962,7 +1287,9 @@ function Dashboard({ darkMode, setDarkMode }) {
                 }
                 disabled={sleepLoading}
               >
-                {sleepLoading ? "Loading..." : "Load More"}
+                {sleepLoading
+                  ? "Loading..."
+                  : "Load More"}
               </button>
             )}
           </section>
